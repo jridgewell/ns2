@@ -1,9 +1,9 @@
 /* -*-	Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*- */
 
 /*
- * tcp-vegas.cc
+ * tcp-nc.cc
  * Copyright (C) 1997 by the University of Southern California
- * $Id: tcp-vegas.cc,v 1.37 2005/08/25 18:58:12 johnh Exp $
+ * $Id: tcp-nc.cc,v 1.37 2005/08/25 18:58:12 johnh Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License,
@@ -58,7 +58,7 @@
 
 #ifndef lint
 static const char rcsid[] =
-"@(#) $Header: /cvsroot/nsnam/ns-2/tcp/tcp-vegas.cc,v 1.37 2005/08/25 18:58:12 johnh Exp $ (NCSU/IBM)";
+"@(#) $Header: /cvsroot/nsnam/ns-2/tcp/tcp-nc.cc,v 1.37 2005/08/25 18:58:12 johnh Exp $ (NCSU/IBM)";
 #endif
 
 #include <stdio.h>
@@ -72,22 +72,22 @@ static const char rcsid[] =
 #define MIN(x, y) ((x)<(y) ? (x) : (y))
 
 
-static class VegasTcpClass : public TclClass {
+static class TcpNcClass : public TclClass {
 public:
-	VegasTcpClass() : TclClass("Agent/TCP/Vegas") {}
+	TcpNcClass() : TclClass("Agent/TCP/NC") {}
 	TclObject* create(int, const char*const*) {
-		return (new VegasTcpAgent());
+		return (new TcpNcAgent());
 	}
-} class_vegas;
+} class_tcpnc;
 
 
-VegasTcpAgent::VegasTcpAgent() : TcpAgent()
+TcpNcAgent::TcpNcAgent() : TcpAgent()
 {
 	v_sendtime_ = NULL;
 	v_transmits_ = NULL;
 }
 
-VegasTcpAgent::~VegasTcpAgent()
+TcpNcAgent::~TcpNcAgent()
 {
 	if (v_sendtime_)
 		delete []v_sendtime_;
@@ -96,7 +96,7 @@ VegasTcpAgent::~VegasTcpAgent()
 }
 
 void
-VegasTcpAgent::delay_bind_init_all()
+TcpNcAgent::delay_bind_init_all()
 {
 	delay_bind_init_one("v_alpha_");
 	delay_bind_init_one("v_beta_");
@@ -107,7 +107,7 @@ VegasTcpAgent::delay_bind_init_all()
 }
 
 int
-VegasTcpAgent::delay_bind_dispatch(const char *varName, const char *localName, 
+TcpNcAgent::delay_bind_dispatch(const char *varName, const char *localName, 
 				   TclObject *tracer)
 {
 	/* init vegas var */
@@ -123,7 +123,7 @@ VegasTcpAgent::delay_bind_dispatch(const char *varName, const char *localName,
 }
 
 void
-VegasTcpAgent::reset()
+TcpNcAgent::reset()
 {
 	t_cwnd_changed_ = 0.;
 	firstrecv_ = -1.0;
@@ -143,7 +143,7 @@ VegasTcpAgent::reset()
 }
 
 void
-VegasTcpAgent::recv_newack_helper(Packet *pkt)
+TcpNcAgent::recv_newack_helper(Packet *pkt)
 {
 	newack(pkt);
 #if 0
@@ -160,7 +160,7 @@ VegasTcpAgent::recv_newack_helper(Packet *pkt)
 }
 
 void
-VegasTcpAgent::recv(Packet *pkt, Handler *)
+TcpNcAgent::recv(Packet *pkt, Handler *)
 {
 	double currentTime = vegastime();
 	hdr_tcp *tcph = hdr_tcp::access(pkt);
@@ -341,7 +341,7 @@ VegasTcpAgent::recv(Packet *pkt, Handler *)
 			 * already did.
 			 */
 			--v_worried_;
-			int expired=vegas_expire(pkt);
+			int expired=nc_expire(pkt);
 			if(expired>=0) {
 				dupacks_ = numdupacks_;
 				output(expired, TCP_REASON_DUPACK);
@@ -351,7 +351,7 @@ VegasTcpAgent::recv(Packet *pkt, Handler *)
    	} else if (tcph->seqno() == last_ack_)  {
 		/* check if a timeout should happen */
 		++dupacks_; 
-		int expired=vegas_expire(pkt);
+		int expired=nc_expire(pkt);
 		if (expired>=0 || dupacks_ == numdupacks_) {
 			double sendTime=v_sendtime_[(last_ack_+1) % v_maxwnd_]; 
 			int transmits=v_transmits_[(last_ack_+1) % v_maxwnd_];
@@ -419,7 +419,7 @@ VegasTcpAgent::recv(Packet *pkt, Handler *)
 }
 
 void
-VegasTcpAgent::timeout(int tno)
+TcpNcAgent::timeout(int tno)
 {
 	if (tno == TCP_TIMER_RTX) {
 		if (highest_ack_ == maxseq_ && !slow_start_restart_) {
@@ -515,7 +515,7 @@ VegasTcpAgent::output(int seqno, int reason)
  * fine grained timer).
  */
 int
-VegasTcpAgent::vegas_expire(Packet* pkt)
+TcpNcAgent::nc_expire(Packet* pkt)
 {
 	hdr_tcp *tcph = hdr_tcp::access(pkt);
 	double elapse = vegastime() - v_sendtime_[(tcph->seqno()+1)%v_maxwnd_];
