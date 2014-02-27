@@ -64,6 +64,8 @@ static const char rcsid[] =
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
+#include <math.h>
+#include <vector.h>
 
 #include "ip.h"
 #include "tcp.h"
@@ -85,6 +87,7 @@ TcpNcAgent::TcpNcAgent() : TcpAgent()
 {
 	v_sendtime_ = NULL;
 	v_transmits_ = NULL;
+	nc_coding_window_ = NULL;
 }
 
 TcpNcAgent::~TcpNcAgent()
@@ -93,6 +96,10 @@ TcpNcAgent::~TcpNcAgent()
 		delete []v_sendtime_;
 	if (v_transmits_)
 		delete []v_transmits_;
+	if (nc_coding_window_) {
+        nc_coding_window_.clear();
+		delete nc_coding_window_;
+	}
 }
 
 void
@@ -138,6 +145,10 @@ TcpNcAgent::reset()
 	v_baseRTT_ = 1000000000.;
 	v_incr_ = 0;
 	v_inc_flag_ = 1;
+    
+    nc_tx_serial_num_ = 0;
+    nc_num_ = 0;
+    nc_r_ = 3;
 
 	TcpAgent::reset();
 }
