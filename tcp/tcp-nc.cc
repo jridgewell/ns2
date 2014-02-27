@@ -88,6 +88,7 @@ TcpNcAgent::TcpNcAgent() : TcpAgent()
 	v_sendtime_ = NULL;
 	v_transmits_ = NULL;
 	nc_coding_window_ = NULL;
+	nc_sent_seq_nums_ = NULL;
 }
 
 TcpNcAgent::~TcpNcAgent()
@@ -479,14 +480,17 @@ TcpNcAgent::output(int seqno, int reason)
 		v_maxwnd_ = int(wnd_);
 		if (v_sendtime_)
 			delete []v_sendtime_;
-        	if (v_transmits_)
-               		delete []v_transmits_;
+    	if (v_transmits_)
+       		delete []v_transmits_;
 		v_sendtime_ = new double[v_maxwnd_];
 		v_transmits_ = new int[v_maxwnd_];
 		for(int i=0;i<v_maxwnd_;i++) {
 			v_sendtime_[i] = -1.;
 			v_transmits_[i] = 0;
 		}
+        
+        nc_coding_window_ = new std::vector<Packet>();
+        nc_sent_seq_nums_ = new std::vector<Packet>();
 	}
 
 	// record a find grained send time and # of transmits 
