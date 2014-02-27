@@ -452,7 +452,7 @@ TcpNcAgent::timeout(int tno)
 }
 
 void
-VegasTcpAgent::output(int seqno, int reason)
+TcpNcAgent::output(int seqno, int reason)
 {
 	Packet* p = allocpkt();
 	hdr_tcp *tcph = hdr_tcp::access(p);
