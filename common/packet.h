@@ -198,9 +198,12 @@ static const packet_t PT_DCCP_RESET = 71;
 
         // M-DART packets
 static const packet_t PT_MDART = 72;
+
+        // Network Coding TCP
+static const packet_t PT_TCPNC = 73;
 	
         // insert new packet types here
-static packet_t       PT_NTYPE = 73; // This MUST be the LAST one
+static packet_t       PT_NTYPE = 74; // This MUST be the LAST one
 
 enum packetClass
 {
@@ -258,7 +261,8 @@ public:
 		         (type) == PT_ACK || \
 		         (type) == PT_SCTP || \
 		         (type) == PT_SCTP_APP1 || \
-		         (type) == PT_HDLC \
+		         (type) == PT_HDLC || \
+		         (type) == PT_TCPNC \
 		        );
 	}
 	static packetClass classify(packet_t type) {		
@@ -277,7 +281,8 @@ public:
 		    type == PT_ACK || 
 		    type == PT_SCTP || 
 		    type == PT_SCTP_APP1 || 
-		    type == PT_HDLC)
+		    type == PT_HDLC ||
+            type == PT_TCPNC)
 			return DATApkt;
 		if (pc_)
 			return pc_->classify(type);
@@ -417,6 +422,8 @@ public:
 		name_[PT_DCCP_CLOSEREQ]="DCCP_CloseReq";
 		name_[PT_DCCP_RESET]="DCCP_Reset";
 
+		name_[PT_TCPNC]="TCP/NC";
+
 		name_[PT_NTYPE]= "undefined";
 	}
 	static int addPacket(char *name);
@@ -445,7 +452,8 @@ extern p_info packet_info; /* map PT_* to string name */
                             (type) == PT_VIDEO || \
                             (type) == PT_ACK || \
                             (type) == PT_SCTP || \
-                            (type) == PT_SCTP_APP1 \
+                            (type) == PT_SCTP_APP1 || \
+                            (type) == PT_TCPNC \
                             )
 
 //#define OFFSET(type, field)	((long) &((type *)0)->field)
