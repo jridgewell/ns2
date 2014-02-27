@@ -101,6 +101,10 @@ TcpNcAgent::~TcpNcAgent()
         nc_coding_window_.clear();
 		delete nc_coding_window_;
 	}
+	if (nc_sent_seq_nums_) {
+        nc_sent_seq_nums_.clear();
+		delete nc_sent_seq_nums_;
+	}
 }
 
 void
@@ -490,7 +494,7 @@ TcpNcAgent::output(int seqno, int reason)
 		}
         
         nc_coding_window_ = new std::vector<Packet>();
-        nc_sent_seq_nums_ = new std::vector<Packet>();
+        nc_sent_seq_nums_ = new std::vector<int>();
 	}
 
 	// record a find grained send time and # of transmits 

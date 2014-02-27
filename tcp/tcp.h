@@ -722,7 +722,7 @@ protected:
     double nc_num_;
     int nc_r_;
     std::vector<Packet>* nc_coding_window_;
-    std::vector<Packet>* nc_sent_seq_nums_;
+    std::vector<int>* nc_sent_seq_nums_;
 };
 
 // Local Variables:
