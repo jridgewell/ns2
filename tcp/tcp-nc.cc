@@ -496,6 +496,13 @@ TcpNcAgent::output(int seqno, int reason)
         nc_coding_window_ = new std::vector<Packet>();
         nc_sent_seq_nums_ = new std::vector<int>();
 	}
+    
+    // Add Packet to the coding window if not already present
+    if (std::find(nc_sent_seq_nums_->begin(), nc_sent_seq_nums_->end(), seqno) != nc_sent_seq_nums_.end()) {
+        nc_coding_window_->push_back(p);
+        nc_sent_seq_nums_->push_back(seqno);
+    }
+    
 
 	// record a find grained send time and # of transmits 
 	int index = seqno % v_maxwnd_;
