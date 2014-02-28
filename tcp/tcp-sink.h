@@ -37,6 +37,7 @@
 #define ns_tcpsink_h
 
 #include <math.h>
+#include <vector.h>
 #include "agent.h"
 #include "tcp.h"
 
@@ -132,6 +133,8 @@ protected:
         int ecn_syn_;           /* allow SYN/ACK packets to be ECN-capable */
 	int tcp_nc_; //Flag for performing TCP/NC operations
 
+    std::vector<Packet*>* nc_coding_window_;
+    std::vector< std::vector<double>* >* nc_coefficient_matrix_;
 };
 
 class DelAckSink;
