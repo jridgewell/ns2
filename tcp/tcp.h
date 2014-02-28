@@ -58,7 +58,7 @@ struct hdr_tcp {
 	int last_rtt_;		/* more recent RTT measurement in ms, */
 				/*   for statistics only */
     
-    int nc_codeing_wnd_size_;    // TCP/NC
+    int nc_coding_wnd_size_;    // TCP/NC
     int nc_tx_serial_num_;       // TCP/NC
     int* nc_coefficients_;       // TCP/NC
 
@@ -81,7 +81,7 @@ struct hdr_tcp {
 	int& flags() { return (tcp_flags_); }
 	int& last_rtt() { return (last_rtt_); }
 	int& nc_tx_serial_num() { return (nc_tx_serial_num_); }
-	int& nc_codeing_wnd_size() { return (nc_codeing_wnd_size_); }
+	int& nc_coding_wnd_size() { return (nc_coding_wnd_size_); }
 };
 
 /* these are used to mark packets as to why we xmitted them */
