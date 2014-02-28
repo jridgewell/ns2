@@ -333,6 +333,8 @@ void TcpSink::ack(Packet* opkt)
 		}
 		
 		std::vector<double> *pivot_row;
+		// Use gaussian elimination to sovle for packets
+		// TODO: perform gaussian elimination on data
 		for (row = 0; row < rows; row++) {
 			pivot_row = nc_coefficient_matrix_->at(row);
 			pivot = pivot_row->at(row);
@@ -358,10 +360,41 @@ void TcpSink::ack(Packet* opkt)
 			}
 		}
 		
-		// TODO: perform gaussian elimination on data
-		// TODO: decode any packets
-		// TODO: send decoded packets to tcp
-		// TODO: set seqno to oldest unseen packet
+		// Search for any packets that have been decoded,
+		// but ignore packets that were already.
+		for (r = nc_last_seen_row_; r < rows; r++) {
+			int zeros = 0;
+			for (c = 0; c < columns; c++) {
+				tmp = nc_coefficient_matrix_->at(r)->at(c);
+				if (-.000001 < tmp && tmp < .000001) {
+					zeros++;
+				}
+			}
+			
+			// Only one non-zero value means the row is solved.
+			// Send it's packet to the app
+			if (zeros == columns - 1) {
+				nc_last_seen_row_ = r + 1;
+				int numToDeliver;
+				Packet *pkt = nc_coding_window_->at(row);
+				int numBytes = hdr_cmn::access(pkt)->size();
+				// number of bytes in the packet just received
+				hdr_tcp *th = hdr_tcp::access(pkt);
+				acker_->update_ts(th->seqno(),th->ts(),ts_echo_rfc1323_);
+				// update the timestamp to echo
+	
+		      	numToDeliver = acker_->update(th->seqno(), numBytes);
+				// update the recv window; figure out how many in-order-bytes
+				// (if any) can be removed from the window and handed to the
+				// application
+				if (numToDeliver) {
+					bytes_ += numToDeliver;
+					recvBytes(numToDeliver);
+				}
+				Packet::free(pkt);
+			}
+		}
+
 		// Officially called PREV_SERIAL_NUM,
 		// I'm using nc_tx_serial_num because it's already there.
 		ntcp->nc_tx_serial_num() = acker_->nc_prev_serial_num_;
