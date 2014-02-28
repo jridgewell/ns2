@@ -493,6 +493,9 @@ TcpNcAgent::output(int seqno, int reason)
 			v_transmits_[i] = 0;
 		}
         
+        nc_tx_serial_num_ = 0;
+        nc_num_ = 0;
+        nc_r_ = 3;
         nc_coding_window_ = new std::vector<Packet>();
         nc_sent_seq_nums_ = new std::vector<int>();
 	}
