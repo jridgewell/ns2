@@ -77,7 +77,8 @@ protected:
 	double ts_to_echo_;	/* timestamp to echo to peer */
 	int is_dup_;		// A duplicate packet.
 public:
-        int last_ack_sent_;     // For updating timestamps, from Andrei Gurtov.
+    int last_ack_sent_;     // For updating timestamps, from Andrei Gurtov.
+    int nc_prev_serial_num_;
 };
 
 // derive Sacker from TclObject to allow for traced variable
@@ -129,6 +130,7 @@ protected:
 	double lastreset_; 	/* W.N. used for detecting packets  */
 				/* from previous incarnations */
         int ecn_syn_;           /* allow SYN/ACK packets to be ECN-capable */
+	int tcp_nc_; //Flag for performing TCP/NC operations
 
 };
 

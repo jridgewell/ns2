@@ -48,7 +48,7 @@ public:
 } class_tcpsink;
 
 Acker::Acker() : next_(0), maxseen_(0), wndmask_(MWM), ecn_unacked_(0), 
-	ts_to_echo_(0), last_ack_sent_(0)
+	ts_to_echo_(0), last_ack_sent_(0), nc_prev_serial_num_(0)
 {
 	seen_ = new int[MWS];
 	memset(seen_, 0, (sizeof(int) * (MWS)));
@@ -207,6 +207,7 @@ TcpSink::delay_bind_init_all()
 #if defined(TCP_DELAY_BIND_ALL) && 0
         delay_bind_init_one("maxSackBlocks_");
 #endif /* TCP_DELAY_BIND_ALL */
+    delay_bind_init_one("tcp_nc_");
 
 	Agent::delay_bind_init_all();
 }
@@ -225,6 +226,7 @@ TcpSink::delay_bind_dispatch(const char *varName, const char *localName, TclObje
 #if defined(TCP_DELAY_BIND_ALL) && 0
         if (delay_bind(varName, localName, "maxSackBlocks_", &max_sack_blocks_, tracer)) return TCL_OK;
 #endif /* TCP_DELAY_BIND_ALL */
+    if (delay_bind_bool(varName, localName, "tcp_nc_", &tcp_nc_, tracer)) return TCL_OK;
 
         return Agent::delay_bind_dispatch(varName, localName, tracer);
 }
@@ -295,6 +297,19 @@ void TcpSink::ack(Packet* opkt)
 	// is just the left edge of the receive window - 1
 	ntcp->ts() = now;
 	// timestamp the packet
+	
+	if (tcp_nc_) {
+		// TODO: add the coding vector to coefficient matrix
+		// TODO: perform gaussian elimination
+		// TODO: decode any packets
+		// TODO: send decoded packets to tcp
+		// TODO: set seqno to oldest unseen packet
+		// Officially called PREV_SERIAL_NUM,
+		// I'm using nc_tx_serial_num because it's already there. 
+		ntcp->nc_tx_serial_num() = acker_->nc_prev_serial_num_;
+		acker_->nc_prev_serial_num_ = otcp->nc_tx_serial_num();
+	}
+	
 
 	if (ts_echo_bugfix_)  /* TCP/IP Illustrated, Vol. 2, pg. 870 */
 		ntcp->ts_echo() = acker_->ts_to_echo();
