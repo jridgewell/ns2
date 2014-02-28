@@ -384,7 +384,6 @@ void TcpSink::ack(Packet* opkt)
 					bytes_ += numToDeliver;
 					recvBytes(numToDeliver);
 				}
-				Packet::free(pkt);
 			}
 		}
 
@@ -473,22 +472,29 @@ void TcpSink::recv(Packet* pkt, Handler*)
 		Packet::free(pkt);
 		return;
 	}
-	acker_->update_ts(th->seqno(),th->ts(),ts_echo_rfc1323_);
-	// update the timestamp to echo
-	
-      	numToDeliver = acker_->update(th->seqno(), numBytes);
-	// update the recv window; figure out how many in-order-bytes
-	// (if any) can be removed from the window and handed to the
-	// application
-	if (numToDeliver) {
-		bytes_ += numToDeliver;
-		recvBytes(numToDeliver);
-	}
-	// send any packets to the application
+	if (tcp_nc_) {
       	ack(pkt);
-	// ACK the packet
-	Packet::free(pkt);
-	// remove it from the system
+		// ACK the packet
+		Packet::free(pkt);
+		// remove it from the system
+	} else {
+		acker_->update_ts(th->seqno(),th->ts(),ts_echo_rfc1323_);
+		// update the timestamp to echo
+	
+	      	numToDeliver = acker_->update(th->seqno(), numBytes);
+		// update the recv window; figure out how many in-order-bytes
+		// (if any) can be removed from the window and handed to the
+		// application
+		if (numToDeliver) {
+			bytes_ += numToDeliver;
+			recvBytes(numToDeliver);
+		}
+		// send any packets to the application
+	      	ack(pkt);
+		// ACK the packet
+		Packet::free(pkt);
+		// remove it from the system
+	}
 }
 
 static class DelSinkClass : public TclClass {
