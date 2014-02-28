@@ -182,6 +182,9 @@ TcpSink::TcpSink(Acker* acker) : Agent(PT_ACK), acker_(acker), save_(NULL),
 	bytes_ = 0; 
 	bind("bytes_", &bytes_);
 
+    nc_coding_window_ = new std::vector<Packet*>();
+    nc_coefficient_matrix_ = new std::vector< std::vector<double> >();
+	
 	/*
 	 * maxSackBlocks_ does wierd tracing things.
 	 * don't make it delay-bound yet.
@@ -190,6 +193,17 @@ TcpSink::TcpSink(Acker* acker) : Agent(PT_ACK), acker_(acker), save_(NULL),
 #else /* ! TCP_DELAY_BIND_ALL */
 	bind("maxSackBlocks_", &max_sack_blocks_); // used only by sack
 #endif /* TCP_DELAY_BIND_ALL */
+}
+
+TcpSink::~TcpSink() {
+	if (nc_coefficient_matrix_) {
+		nc_coefficient_matrix_.clear();
+		delete nc_coefficient_matrix_;
+	}
+	if (nc_coding_window_) {
+		nc_coding_window_.clear();
+		delete nc_coding_window_;
+	}
 }
 
 void
