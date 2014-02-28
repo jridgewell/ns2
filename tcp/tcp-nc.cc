@@ -523,7 +523,7 @@ TcpNcAgent::output(int seqno, int reason)
         nc_tx_serial_num++;
         
             	int data_size = p->userdata->size();
-                int nc_codeing_wnd_size = nc_coding_window_->size();
+                int nc_coding_wnd_size = nc_coding_window_->size();
                 unsigned char *data = new unsigned char[data_size];
                 int *coefficients = new int[nc_codeing_wnd_size];
                 int i;
@@ -532,7 +532,7 @@ TcpNcAgent::output(int seqno, int reason)
                 for (i = 0; i < data_size; i++) {
                     data[i] = '\0';
                 }
-                for (i = 0; i < nc_codeing_wnd_size; i++) {
+                for (i = 0; i < nc_coding_wnd_size; i++) {
                     Packet *it = nc_coding_window_->at(i);
                     unsigned char *p_data = it->userdata->data;
                     int c = rand() % 256; // TODO: Bind Fieldsize for testing
