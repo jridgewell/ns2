@@ -306,13 +306,6 @@ void TcpSink::ack(Packet* opkt)
 	}
 
 
-	// get the tcp headers
-	ntcp->seqno() = acker_->Seqno();
-	// get the cumulative sequence number to put in the ACK; this
-	// is just the left edge of the receive window - 1
-	ntcp->ts() = now;
-	// timestamp the packet
-	
 	if (tcp_nc_) {
 		int columns = otcp->nc_coding_wnd_size();
 		int rows = nc_coefficient_matrix_->size() + 1;
@@ -400,7 +393,14 @@ void TcpSink::ack(Packet* opkt)
 		ntcp->nc_tx_serial_num() = acker_->nc_prev_serial_num_;
 		acker_->nc_prev_serial_num_ = otcp->nc_tx_serial_num();
 	}
-	
+
+	// get the tcp headers
+	ntcp->seqno() = acker_->Seqno();
+	// get the cumulative sequence number to put in the ACK; this
+	// is just the left edge of the receive window - 1
+	ntcp->ts() = now;
+	// timestamp the packet
+
 
 	if (ts_echo_bugfix_)  /* TCP/IP Illustrated, Vol. 2, pg. 870 */
 		ntcp->ts_echo() = acker_->ts_to_echo();
