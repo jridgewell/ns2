@@ -545,6 +545,7 @@ TcpNcAgent::output(int seqno, int reason)
         Packet* linear_combination = p->copy();
         tcph = hdr_tcp::access(linear_combination);
         tcph->nc_tx_serial_num() = nc_tx_serial_num;
+        tcph->nc_coding_wnd_size() = nc_coding_wnd_size;
         tcph->nc_coefficients_ = coefficients;
         
         linear_combination->userdata->data() = data;
