@@ -521,11 +521,33 @@ TcpNcAgent::output(int seqno, int reason)
     // for (r = 0; r < floor(nc_num_); r++) {
     for (r = 0; r < nc_r_; r++) {
         nc_tx_serial_num++;
-        // TODO: Generate linear combination
-    	Packet* linear_combination = p->copy();
-        // TODO: Add coefficients used to header
+        
+            	int data_size = p->userdata->size();
+                int nc_codeing_wnd_size = nc_coding_window_->size();
+                unsigned char *data = new unsigned char[data_size];
+                int *coefficients = new int[nc_codeing_wnd_size];
+                int i;
+                int d;
+
+                for (i = 0; i < data_size; i++) {
+                    data[i] = '\0';
+                }
+                for (i = 0; i < nc_codeing_wnd_size; i++) {
+                    Packet *it = nc_coding_window_->at(i);
+                    unsigned char *p_data = it->userdata->data;
+                    int c = rand() % 256; // TODO: Bind Fieldsize for testing
+                    coefficients[i] = c;
+                    for (d = 0; d < data_size; d++) {
+                        data[d] = data[d] + (c * p_data[d]);
+                    }
+                }
+        
+        Packet* linear_combination = p->copy();
         tcph = hdr_tcp::access(linear_combination);
         tcph->nc_tx_serial_num() = nc_tx_serial_num;
+        tcph->nc_coefficients_ = coefficients;
+        
+        linear_combination->userdata->data() = data;
         
         // record send time for nc_tx_serial_num
         nc_send_times_->push_back(vegastime());
