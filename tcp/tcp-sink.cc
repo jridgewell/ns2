@@ -177,7 +177,7 @@ int Acker::update(int seq, int numBytes)
 }
 
 TcpSink::TcpSink(Acker* acker) : Agent(PT_ACK), acker_(acker), save_(NULL),
-	lastreset_(0.0)
+	lastreset_(0.0), nc_last_seen_row_(0)
 {
 	bytes_ = 0; 
 	bind("bytes_", &bytes_);
@@ -277,6 +277,7 @@ void TcpSink::reset()
 	save_ = NULL;
 	lastreset_ = Scheduler::instance().clock(); /* W.N. - for detecting */
 				/* packets from previous incarnations */
+	nc_last_seen_row_ = 0;
 }
 
 void TcpSink::ack(Packet* opkt)

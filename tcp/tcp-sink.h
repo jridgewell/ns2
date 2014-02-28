@@ -36,6 +36,7 @@
 #ifndef ns_tcpsink_h
 #define ns_tcpsink_h
 
+#include <limits>
 #include <math.h>
 #include <vector.h>
 #include "agent.h"
@@ -131,8 +132,9 @@ protected:
 	double lastreset_; 	/* W.N. used for detecting packets  */
 				/* from previous incarnations */
         int ecn_syn_;           /* allow SYN/ACK packets to be ECN-capable */
-	int tcp_nc_; //Flag for performing TCP/NC operations
 
+	int tcp_nc_; //Flag for performing TCP/NC operations
+	int nc_last_seen_row_; // The last row (packet) seen by the app
     std::vector<Packet*>* nc_coding_window_;
     std::vector< std::vector<double>* >* nc_coefficient_matrix_;
 };
