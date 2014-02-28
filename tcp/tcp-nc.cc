@@ -506,6 +506,19 @@ TcpNcAgent::output(int seqno, int reason)
         nc_sent_seq_nums_->push_back(seqno);
     }
     
+    // nc_num_ += nc_r_; // TCP/NC does not specify how nc_num_ should be adjusted
+    int r;
+    // for (r = 0; r < floor(nc_num_); r++) {
+    for (r = 0; r < nc_r_; r++) {
+        nc_tx_serial_num++;
+        // TODO: Generate linear combination
+    	Packet* linear_combination = p->copy();
+        // TODO: Add coefficients used to header
+        tcph = hdr_tcp::access(linear_combination);
+        tcph->nc_tx_serial_num() = nc_tx_serial_num;
+
+    	send(linear_combination, 0);
+    }
 
 	// record a find grained send time and # of transmits 
 	int index = seqno % v_maxwnd_;
@@ -514,9 +527,9 @@ TcpNcAgent::output(int seqno, int reason)
 
 	/* support ndatabytes_ in output - Lloyd Wood 14 March 2000 */
 	int bytes = hdr_cmn::access(p)->size(); 
-	ndatabytes_ += bytes; 
-	ndatapack_++; // Added this - Debojyoti 12th Oct 2000
-	send(p, 0);
+	ndatabytes_ += bytes * (r + 1); 
+	ndatapack_ += (r + 1); // Added this - Debojyoti 12th Oct 2000
+
 	if (seqno == curseq_ && seqno > maxseq_)
 		idle();  // Tell application I have sent everything so far
 
@@ -530,9 +543,9 @@ TcpNcAgent::output(int seqno, int reason)
 			}
 		}
 	} else {
-		++nrexmitpack_;
-       		nrexmitbytes_ += bytes;
-    	}
+		nrexmitpack_ += (r + 1);
+   		nrexmitbytes_ += bytes * (r + 1);
+	}
 
 	if (!(rtx_timer_.status() == TIMER_PENDING))
 		/* No timer pending.  Schedule one. */
