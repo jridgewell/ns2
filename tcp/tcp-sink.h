@@ -103,6 +103,7 @@ class TcpSink : public Agent {
 	friend class XcpSink;
 public:
 	TcpSink(Acker*);
+	~TcpSink();
 	void recv(Packet* pkt, Handler*);
 	void reset();
 	int command(int argc, const char*const* argv);

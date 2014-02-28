@@ -183,7 +183,7 @@ TcpSink::TcpSink(Acker* acker) : Agent(PT_ACK), acker_(acker), save_(NULL),
 	bind("bytes_", &bytes_);
 
     nc_coding_window_ = new std::vector<Packet*>();
-    nc_coefficient_matrix_ = new std::vector< std::vector<double> >();
+    nc_coefficient_matrix_ = new std::vector< std::vector<double>* >();
 	
 	/*
 	 * maxSackBlocks_ does wierd tracing things.
@@ -197,11 +197,11 @@ TcpSink::TcpSink(Acker* acker) : Agent(PT_ACK), acker_(acker), save_(NULL),
 
 TcpSink::~TcpSink() {
 	if (nc_coefficient_matrix_) {
-		nc_coefficient_matrix_.clear();
+		nc_coefficient_matrix_->clear();
 		delete nc_coefficient_matrix_;
 	}
 	if (nc_coding_window_) {
-		nc_coding_window_.clear();
+		nc_coding_window_->clear();
 		delete nc_coding_window_;
 	}
 }
@@ -314,7 +314,10 @@ void TcpSink::ack(Packet* opkt)
 		double pivot;
 		double tmp;
 		
-		std::vector<double> *coefficients = new std::vector<double>(nc_coefficients, sizeof(double) * columns);
+		std::vector<double> *coefficients = new std::vector<double>(columns);
+		for (c = 0; c < columns; c++) {
+			coefficients->push_back(nc_coefficients[c]);
+		}
 
 		nc_coding_window_->push_back(opkt->refcopy());
 		nc_coefficient_matrix_->push_back(coefficients);
