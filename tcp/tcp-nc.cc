@@ -89,6 +89,7 @@ TcpNcAgent::TcpNcAgent() : TcpAgent()
 	v_transmits_ = NULL;
 	nc_coding_window_ = NULL;
 	nc_sent_seq_nums_ = NULL;
+	nc_send_times_ = NULL;
 }
 
 TcpNcAgent::~TcpNcAgent()
@@ -104,6 +105,10 @@ TcpNcAgent::~TcpNcAgent()
 	if (nc_sent_seq_nums_) {
         nc_sent_seq_nums_.clear();
 		delete nc_sent_seq_nums_;
+	}
+	if (nc_send_times_) {
+        nc_send_times_.clear();
+		delete nc_send_times_;
 	}
 }
 
@@ -181,6 +186,10 @@ TcpNcAgent::recv(Packet *pkt, Handler *)
 	double currentTime = vegastime();
 	hdr_tcp *tcph = hdr_tcp::access(pkt);
 	hdr_flags *flagh = hdr_flags::access(pkt);
+    
+    // Rewrite Send time to trick vegas
+    double nc_send_time = nc_send_times_->at(tcph->nc_tx_serial_num());
+    v_sendtime_[tcph->seqno() % v_maxwnd_] = nc_send_time;
 
 #if 0
 	if (pkt->type_ != PT_ACK) {
@@ -498,6 +507,7 @@ TcpNcAgent::output(int seqno, int reason)
         nc_r_ = 3;
         nc_coding_window_ = new std::vector<Packet>();
         nc_sent_seq_nums_ = new std::vector<int>();
+        nc_send_times_ = new std::vector<double>();
 	}
     
     // Add Packet to the coding window if not already present
@@ -516,6 +526,9 @@ TcpNcAgent::output(int seqno, int reason)
         // TODO: Add coefficients used to header
         tcph = hdr_tcp::access(linear_combination);
         tcph->nc_tx_serial_num() = nc_tx_serial_num;
+        
+        // record send time for nc_tx_serial_num
+        nc_send_times_->push_back(vegastime());
 
     	send(linear_combination, 0);
     }
