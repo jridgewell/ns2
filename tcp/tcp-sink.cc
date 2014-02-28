@@ -313,13 +313,56 @@ void TcpSink::ack(Packet* opkt)
 	// timestamp the packet
 	
 	if (tcp_nc_) {
-		// TODO: add the coding vector to coefficient matrix
-		// TODO: perform gaussian elimination
+		int columns = otcp->nc_coding_wnd_size();
+		int row = nc_coefficient_matrix_->size() + 1;
+		double* nc_coefficients = otcp->nc_coefficients_;
+		int row, r, c;
+		double pivot;
+		double tmp;
+		
+		std::vector<double> *coefficients = new std::vector<double>(nc_coefficients, sizeof(double) * columns);
+
+		nc_coding_window_->push_back(opkt->refcopy());
+		nc_coefficient_matrix_->push_back(coefficients);
+		
+		std::vector< vector<double> >::iterator it;
+		// resize the matrix
+		for (row = 0; row < rows; row++) {
+			nc_coefficient_matrix_->at(row)->resize(columns);
+		}
+		
+		std::vector<double> *pivot_row;
+		for (row = 0; row < rows; row++) {
+			pivot_row = nc_coefficient_matrix_->at(row);
+			pivot = pivot_row->at(row);
+		
+			for (c = 0; c < pivot_row->size(); c++) {
+				tmp = pivot_row->at(c) / pivot;
+				pivot_row->at(c) = tmp;
+			}
+		
+			for (r = 0; r < rows; r++) {
+				if (r == row) {
+					continue;
+				}
+				coefficients = nc_coefficient_matrix_->at(r);
+				for (c = columns - 1; c >= row; c--) {
+					if (c == row) {
+						coefficients->at(c) = 0;
+					} else {
+						tmp = (pivot * coefficients->at(c)) / (pivot_row->at(c) * coefficients->at(row));
+						coefficients->at(c) = tmp;
+					}
+				}
+			}
+		}
+		
+		// TODO: perform gaussian elimination on data
 		// TODO: decode any packets
 		// TODO: send decoded packets to tcp
 		// TODO: set seqno to oldest unseen packet
 		// Officially called PREV_SERIAL_NUM,
-		// I'm using nc_tx_serial_num because it's already there. 
+		// I'm using nc_tx_serial_num because it's already there.
 		ntcp->nc_tx_serial_num() = acker_->nc_prev_serial_num_;
 		acker_->nc_prev_serial_num_ = otcp->nc_tx_serial_num();
 	}
