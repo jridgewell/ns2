@@ -1062,6 +1062,7 @@ Agent/TCPSink set RFC2581_immediate_ack_ true
 Agent/TCPSink set SYN_immediate_ack_ true ; # Added 2010/02/02
 Agent/TCPSink set bytes_ 0
 Agent/TCPSink set ecn_syn_ false ;	# Added 2005/11/21 for SYN/ACK pkts.
+Agent/TCPSink set tcp_nc_ false ;
 
 Agent/TCPSink/DelAck set interval_ 100ms
 catch {
