@@ -38,7 +38,7 @@
 
 #include <limits>
 #include <math.h>
-#include <vector.h>
+#include <vector>
 #include "agent.h"
 #include "tcp.h"
 

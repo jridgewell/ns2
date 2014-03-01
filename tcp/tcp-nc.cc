@@ -65,7 +65,7 @@ static const char rcsid[] =
 #include <stdlib.h>
 #include <sys/types.h>
 #include <math.h>
-#include <vector.h>
+#include <vector>
 
 #include "ip.h"
 #include "tcp.h"

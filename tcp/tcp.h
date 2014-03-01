@@ -35,7 +35,7 @@
 #ifndef ns_tcp_h
 #define ns_tcp_h
 
-#include <vector.h>
+#include <vector>
 
 #include "agent.h"
 #include "packet.h"
