@@ -68,7 +68,8 @@ Keys:
  values: 
   tcp types:
 	 TCP [TCP Tahoe], TCP/Reno, TCP/NewReno, TCP/Sack1, 
-	 TCP/Vegas, TCP/Fack
+	 TCP/Vegas, TCP/Fack,
+	 TCP/NC
   srm types:
 	SRM, SRM/Deterministic , SRM/Probabilistic, SRM/Adaptive
 	details:
@@ -420,7 +421,7 @@ AgentGen instproc create-agents { } {
 }
 
 AgentGen instproc check-tcp { type } {
-	set tcps { "" /Reno /NewReno /Sack1 /Vegas /Fack /FullTcp }
+	set tcps { "" /Reno /NewReno /Sack1 /Vegas /Fack /FullTcp /NC }
 	foreach tcp $tcps {
 		if { $type == "TCP$tcp" } {
 			return 1
