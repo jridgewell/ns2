@@ -151,7 +151,7 @@ unsigned char LinuxTcpAgent::ack_processing(Packet* pkt, unsigned char flag)
 	if (flag&FLAG_DATA_ACKED) {
 		highest_ack_ = tcph->seqno();
 		linux_.snd_una = (highest_ack_+1)*linux_.mss_cache;
-		maxseq_ = max(maxseq_, highest_ack_);
+		maxseq_ = ns2max(maxseq_, highest_ack_);
 		if (t_seqno_ < highest_ack_ + 1) {
 			t_seqno_ = highest_ack_ + 1;
 			linux_.snd_nxt = t_seqno_*linux_.mss_cache;
@@ -628,7 +628,7 @@ void LinuxTcpAgent::send_much(int force, int reason, int maxburst)
 */
 	next_pkts_in_flight_ = min(next_pkts_in_flight_, packets_in_flight()+1);
 
-	while ( packets_in_flight() < max(win, next_pkts_in_flight_) ) {
+	while ( packets_in_flight() < ns2max(win, next_pkts_in_flight_) ) {
 		if (overhead_ == 0 || force) {
 			found = 0;
 			xmit_seqno = scb_->GetNextRetran ();
@@ -650,7 +650,7 @@ void LinuxTcpAgent::send_much(int force, int reason, int maxburst)
 			}
 			if (found) {
 				output(xmit_seqno, reason);
-				next_pkts_in_flight_ = min( next_pkts_in_flight_, max(packets_in_flight()-1,1));
+				next_pkts_in_flight_ = min( next_pkts_in_flight_, ns2max(packets_in_flight()-1,1));
 				if (t_seqno_ <= xmit_seqno) {
 					printf("Hit a strange case 2.\n");
 					t_seqno_ = xmit_seqno + 1;

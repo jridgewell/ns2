@@ -62,35 +62,35 @@ inline double min(double a, double b)
 	return a < b ? a : b;
 }
 
-inline int max(int a, int b)
+inline int ns2max(int a, int b)
 {
 	return a < b ? b : a;
 }
 
-inline double max(int a, double b)
+inline double ns2max(int a, double b)
 {
 	return a < b ? b : a;
 }
 
-inline double max(double a, int b)
+inline double ns2max(double a, int b)
 {
 	return a < b ? b : a;
 }
 
-inline double max(double a, double b)
+inline double ns2max(double a, double b)
 {
 	return a < b ? b : a;
 }
 
 
 template <class Type>
-inline Type abs(Type a)
+inline Type ns2abs(Type a)
 {
 	return (a < 0) ? -a : a;
 }
 
 template <class Type>
-inline void swap(Type& a, Type& b)
+inline void ns2swap(Type& a, Type& b)
 {
 	Type t = a;
 	a = b;
