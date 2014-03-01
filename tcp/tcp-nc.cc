@@ -66,6 +66,7 @@ static const char rcsid[] =
 #include <sys/types.h>
 #include <math.h>
 #include <vector>
+#include <algorithm>
 
 #include "ip.h"
 #include "tcp.h"
@@ -99,15 +100,15 @@ TcpNcAgent::~TcpNcAgent()
 	if (v_transmits_)
 		delete []v_transmits_;
 	if (nc_coding_window_) {
-        nc_coding_window_.clear();
+        nc_coding_window_->clear();
 		delete nc_coding_window_;
 	}
 	if (nc_sent_seq_nums_) {
-        nc_sent_seq_nums_.clear();
+        nc_sent_seq_nums_->clear();
 		delete nc_sent_seq_nums_;
 	}
 	if (nc_send_times_) {
-        nc_send_times_.clear();
+        nc_send_times_->clear();
 		delete nc_send_times_;
 	}
 }
@@ -366,7 +367,7 @@ TcpNcAgent::recv(Packet *pkt, Handler *)
 			 * already did.
 			 */
 			--v_worried_;
-			int expired=nc_expire(pkt);
+			int expired=vegas_expire(pkt);
 			if(expired>=0) {
 				dupacks_ = numdupacks_;
 				output(expired, TCP_REASON_DUPACK);
@@ -376,7 +377,7 @@ TcpNcAgent::recv(Packet *pkt, Handler *)
    	} else if (tcph->seqno() == last_ack_)  {
 		/* check if a timeout should happen */
 		++dupacks_; 
-		int expired=nc_expire(pkt);
+		int expired=vegas_expire(pkt);
 		if (expired>=0 || dupacks_ == numdupacks_) {
 			double sendTime=v_sendtime_[(last_ack_+1) % v_maxwnd_]; 
 			int transmits=v_transmits_[(last_ack_+1) % v_maxwnd_];
@@ -511,7 +512,7 @@ TcpNcAgent::output(int seqno, int reason)
 	}
     
     // Add Packet to the coding window if not already present
-    if (std::find(nc_sent_seq_nums_->begin(), nc_sent_seq_nums_->end(), seqno) != nc_sent_seq_nums_.end()) {
+    if (std::find(nc_sent_seq_nums_->begin(), nc_sent_seq_nums_->end(), seqno) != nc_sent_seq_nums_->end()) {
         nc_coding_window_->push_back(p);
         nc_sent_seq_nums_->push_back(seqno);
     }
@@ -520,35 +521,35 @@ TcpNcAgent::output(int seqno, int reason)
     int r;
     // for (r = 0; r < floor(nc_num_); r++) {
     for (r = 0; r < nc_r_; r++) {
-        nc_tx_serial_num++;
+        nc_tx_serial_num_++;
         
-            	int data_size = p->userdata->size();
+            	// int data_size = p->userdata()->size();
                 int nc_coding_wnd_size = nc_coding_window_->size();
-                unsigned char *data = new unsigned char[data_size];
+                // unsigned char *data = new unsigned char[data_size];
                 double *coefficients = new double[nc_coding_wnd_size];
                 int i;
                 int d;
 
-                for (i = 0; i < data_size; i++) {
-                    data[i] = '\0';
-                }
+                // for (i = 0; i < data_size; i++) {
+                //     data[i] = '\0';
+                // }
                 for (i = 0; i < nc_coding_wnd_size; i++) {
                     Packet *it = nc_coding_window_->at(i);
-                    unsigned char *p_data = it->userdata->data;
+                    // unsigned char *p_data = it->accessdata();
                     int c = rand() % 256; // TODO: Bind Fieldsize for testing
                     coefficients[i] = c;
-                    for (d = 0; d < data_size; d++) {
-                        data[d] = data[d] + (c * p_data[d]);
-                    }
+                    // for (d = 0; d < data_size; d++) {
+                    //     data[d] = data[d] + (c * p_data[d]);
+                    // }
                 }
         
         Packet* linear_combination = p->copy();
         tcph = hdr_tcp::access(linear_combination);
-        tcph->nc_tx_serial_num() = nc_tx_serial_num;
+        tcph->nc_tx_serial_num() = nc_tx_serial_num_;
         tcph->nc_coding_wnd_size() = nc_coding_wnd_size;
         tcph->nc_coefficients_ = coefficients;
         
-        linear_combination->userdata->data() = data;
+        // ((PacketData*)linear_combination->userdata())->set_data(data);
         
         // record send time for nc_tx_serial_num
         nc_send_times_->push_back(vegastime());
@@ -593,7 +594,7 @@ TcpNcAgent::output(int seqno, int reason)
  * fine grained timer).
  */
 int
-TcpNcAgent::nc_expire(Packet* pkt)
+TcpNcAgent::vegas_expire(Packet* pkt)
 {
 	hdr_tcp *tcph = hdr_tcp::access(pkt);
 	double elapse = vegastime() - v_sendtime_[(tcph->seqno()+1)%v_maxwnd_];
