@@ -332,6 +332,9 @@ TcpNcAgent::recv(Packet *pkt, Handler *)
 			k = (k + 1) % v_maxwnd_;
 			v_sendtime_[k] = -1.0;
 			v_transmits_[k] = 0;
+			Packet::free(nc_coding_window_[k]);
+			nc_coding_window_[k] = NULL;
+			nc_coding_window_size_--;
 		}
 
 		if((sendTime !=0.) && (transmits==1)) {
