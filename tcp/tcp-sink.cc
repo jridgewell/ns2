@@ -177,7 +177,7 @@ int Acker::update(int seq, int numBytes)
 }
 
 TcpSink::TcpSink(Acker* acker) : Agent(PT_ACK), acker_(acker), save_(NULL),
-	lastreset_(0.0), nc_last_seen_row_(0)
+	lastreset_(0.0)
 {
 	bytes_ = 0; 
 	bind("bytes_", &bytes_);
@@ -275,7 +275,6 @@ void TcpSink::reset()
 	save_ = NULL;
 	lastreset_ = Scheduler::instance().clock(); /* W.N. - for detecting */
 				/* packets from previous incarnations */
-	nc_last_seen_row_ = 0;
 }
 
 void TcpSink::ack(Packet* opkt)
@@ -337,8 +336,8 @@ void TcpSink::ack(Packet* opkt)
 				tmp = pivot_row->at(c) / pivot;
 				pivot_row->at(c) = tmp;
 			}
-		
-			for (r = 0; r < rows; r++) {
+
+			for (r = acker_->Seqno() + 1; r < rows; r++) {
 				if (r == row) {
 					continue;
 				}
@@ -356,7 +355,7 @@ void TcpSink::ack(Packet* opkt)
 		
 		// Search for any packets that have been decoded,
 		// but ignore packets that were already.
-		for (r = nc_last_seen_row_; r < rows; r++) {
+		for (r = acker_->Seqno() + 1; r < rows; r++) {
 			int zeros = 0;
 			for (c = 0; c < columns; c++) {
 				tmp = nc_coefficient_matrix_->at(r)->at(c);
@@ -368,7 +367,6 @@ void TcpSink::ack(Packet* opkt)
 			// Only one non-zero value means the row is solved.
 			// Send it's packet to the app
 			if (zeros == columns - 1) {
-				nc_last_seen_row_ = r + 1;
 				int numToDeliver;
 				Packet *pkt = nc_coding_window_->at(row);
 				int numBytes = hdr_cmn::access(pkt)->size();
