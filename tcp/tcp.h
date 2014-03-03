@@ -667,64 +667,18 @@ protected:
 
 
 /* TCP/NC (TcpNcAgent) */
-class TcpNcAgent : public virtual TcpAgent {
+class TcpNcAgent : public virtual VegasTcpAgent {
  public:
 	TcpNcAgent();
 	~TcpNcAgent();
-	virtual void recv(Packet *pkt, Handler *);
-	virtual void timeout(int tno);
 protected:
-	double vegastime() {
-		return(Scheduler::instance().clock() - firstsent_);
-	}
-	virtual void output(int seqno, int reason = 0);
 	virtual void recv_newack_helper(Packet*);
-	int vegas_expire(Packet*); 
 	void reset();
-	void vegas_inflate_cwnd(int win, double current_time);
-
 	virtual void delay_bind_init_all();
 	virtual int delay_bind_dispatch(const char *varName, const char *localName, TclObject *tracer);
+	virtual void send(Packet* p, Handler* h);
 
-	double t_cwnd_changed_; // last time cwnd changed
-	double firstrecv_;	// time recv the 1st ack
-
-	int    v_alpha_;    	// vegas thruput thresholds in pkts
-	int    v_beta_;  	    	
-
-	int    v_gamma_;    	// threshold to change from slow-start to
-				// congestion avoidance, in pkts
-
-	int    v_slowstart_;    // # of pkts to send after slow-start, deflt(2)
-	int    v_worried_;      // # of pkts to chk after dup ack (1 or 2)
-
-	double v_timeout_;      // based on fine-grained timer
-	double v_rtt_;		
-	double v_sa_;		
-	double v_sd_;	
-
-	int    v_cntRTT_;       // # of rtt measured within one rtt
-	double v_sumRTT_;       // sum of rtt measured within one rtt
-
-	double v_begtime_;	// tagged pkt sent
-	int    v_begseq_;	// tagged pkt seqno
-
-	double* v_sendtime_;	// each unacked pkt's sendtime is recorded.
-	int*   v_transmits_;	// # of retx for an unacked pkt
-
-	int    v_maxwnd_;	// maxwnd size for v_sendtime_[]
-	double v_newcwnd_;	// record un-inflated cwnd
-
-	double v_baseRTT_;	// min of all rtt
-
-	double v_incr_;		// amount cwnd is increased in the next rtt
-	int    v_inc_flag_;	// if cwnd is allowed to incr for this rtt
-
-	double v_actual_;	// actual send rate (pkt/s; needed for tcp-rbp)
-
-	int ns_vegas_fix_level_;   // see comment at end of tcp-vegas.cc for details of fixes
-
-	int nc_tx_serial_num_;
+    int nc_tx_serial_num_;
     double nc_num_;
     int nc_r_;
     Packet** nc_coding_window_;

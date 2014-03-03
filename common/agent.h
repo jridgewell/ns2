@@ -81,7 +81,7 @@ class Agent : public Connector {
 	virtual int is_closed() {return 0;} 
 	virtual void clr_closed() {}
 
-	void send(Packet* p, Handler* h) { target_->recv(p, h); }
+	virtual void send(Packet* p, Handler* h) { target_->recv(p, h); }
 	virtual void timeout(int tno);
 
 	virtual void sendmsg(int sz, AppData*, const char* flags = 0);
