@@ -375,7 +375,7 @@ void TcpSink::ack(Packet* opkt)
 			// Send it's packet to the app
 			if (zeros == columns - 1) {
 				int numToDeliver;
-				Packet *pkt = nc_coding_window_->at(row);
+				Packet *pkt = nc_coding_window_->at(r);
 				int numBytes = hdr_cmn::access(pkt)->size();
 				// number of bytes in the packet just received
 				hdr_tcp *th = hdr_tcp::access(pkt);
