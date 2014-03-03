@@ -120,6 +120,7 @@ TcpNcAgent::delay_bind_init_all()
 	delay_bind_init_one("v_beta_");
 	delay_bind_init_one("v_gamma_");
 	delay_bind_init_one("v_rtt_");
+	delay_bind_init_one("nc_r_");
 	TcpAgent::delay_bind_init_all();
         reset();
 }
@@ -136,6 +137,8 @@ TcpNcAgent::delay_bind_dispatch(const char *varName, const char *localName,
         if (delay_bind(varName, localName, "v_gamma_", &v_gamma_, tracer)) 
 		return TCL_OK;
         if (delay_bind(varName, localName, "v_rtt_", &v_rtt_, tracer)) 
+		return TCL_OK;
+        if (delay_bind(varName, localName, "nc_r_", &nc_r_, tracer)) 
 		return TCL_OK;
         return TcpAgent::delay_bind_dispatch(varName, localName, tracer);
 }
@@ -159,7 +162,6 @@ TcpNcAgent::reset()
     
     nc_tx_serial_num_ = 0;
     nc_num_ = 0;
-    nc_r_ = 3;
 
 	TcpAgent::reset();
 }
@@ -505,7 +507,6 @@ TcpNcAgent::output(int seqno, int reason)
         
         nc_tx_serial_num_ = 0;
         nc_num_ = 0;
-        nc_r_ = 3;
         nc_coding_window_ = new std::vector<Packet*>();
         nc_sent_seq_nums_ = new std::vector<int>();
         nc_send_times_ = new std::vector<double>();
