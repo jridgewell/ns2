@@ -197,10 +197,16 @@ TcpSink::TcpSink(Acker* acker) : Agent(PT_ACK), acker_(acker), save_(NULL),
 
 TcpSink::~TcpSink() {
 	if (nc_coefficient_matrix_) {
+		for (unsigned int i = 0; i < nc_coefficient_matrix_->size(); i++) {
+			delete nc_coefficient_matrix_->at(i);
+		}
 		nc_coefficient_matrix_->clear();
 		delete nc_coefficient_matrix_;
 	}
 	if (nc_coding_window_) {
+		for (unsigned int i = 0; i < nc_coding_window_->size(); i++) {
+			Packet::free(nc_coding_window_->at(i));
+		}
 		nc_coding_window_->clear();
 		delete nc_coding_window_;
 	}
