@@ -347,11 +347,14 @@ void TcpSink::ack(Packet* opkt)
 				}
 				coefficients = nc_coefficient_matrix_->at(r);
 				for (c = 0; c < columns; c++) {
+					tmp = coefficients->at(c);
+					if (tmp == 0) {
+						continue;
+					}
 					if (c == row) {
 						coefficients->at(c) = 0;
 					} else {
-						tmp = (pivot * coefficients->at(c)) - (pivot_row->at(c) * coefficients->at(row));
-						coefficients->at(c) = tmp / prev_pivot;
+						coefficients->at(c) = ((pivot * tmp) - (pivot_row->at(c) * coefficients->at(row))) / prev_pivot;
 					}
 				}
 			}
