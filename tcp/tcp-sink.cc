@@ -803,13 +803,14 @@ void TcpNcSink::recv(Packet* pkt, Handler* h) {
     Packet *p;
 
     std::vector<double> *coefficients = new std::vector<double>();
-    for (c = 0, r = 0; c < columns; c++) {
+    for (c = columns - 1, row = 0, r = 0; c >= 0; c--) {
         if (seqno - c > acker_->Seqno()) {
             r++;
-            coefficients->push_back(nc_coefficients[c]);
+            coefficients->push_back(nc_coefficients[row]);
         } else {
             // TODO: modify packet data to remove already solved packets from linear combination
         }
+        row++;
     }
     columns = r;
 
