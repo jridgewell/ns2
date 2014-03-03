@@ -799,7 +799,7 @@ void TcpNcSink::recv(Packet* pkt, Handler* h) {
     int num_to_update = 0;
     int zeros = 0;
     int row, r, c;
-    double pivot, prev_pivot, tmp;
+    double pivot, tmp;
     Packet *p;
 
     std::vector<double> *coefficients = new std::vector<double>();
@@ -828,7 +828,6 @@ void TcpNcSink::recv(Packet* pkt, Handler* h) {
     pivot = 1;
     for (row = 0; row < rows; row++) {
         pivot_row = nc_coefficient_matrix_->at(row);
-        prev_pivot = pivot;
         if ((int) pivot_row->size() <= row) {
             break;
         }
@@ -851,7 +850,7 @@ void TcpNcSink::recv(Packet* pkt, Handler* h) {
                 if (c == row) {
                     coefficients->at(c) = 0;
                 } else {
-                    coefficients->at(c) = ((pivot * tmp) - (pivot_row->at(c) * coefficients->at(row))) / prev_pivot;
+                    coefficients->at(c) = ((pivot * tmp) - (pivot_row->at(c) * coefficients->at(row)));
                 }
             }
         }
