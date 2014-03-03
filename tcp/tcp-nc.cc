@@ -543,7 +543,7 @@ TcpNcAgent::output(int seqno, int reason)
                 for (i = 0; i < nc_coding_window_size_; i++) {
                     Packet *it = nc_coding_window_[(last_ack_ + 1 + i) % v_maxwnd_];
                     // unsigned char *p_data = it->accessdata();
-                    int c = rand() % 256; // TODO: Bind Fieldsize for testing
+                    int c = (rand() % 255) + 1; // TODO: Bind Fieldsize for testing
                     coefficients[i] = c;
                     // for (d = 0; d < data_size; d++) {
                     //     data[d] = data[d] + (c * p_data[d]);
