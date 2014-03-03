@@ -512,7 +512,7 @@ TcpNcAgent::output(int seqno, int reason)
 	}
     
     // Add Packet to the coding window if not already present
-    if (std::find(nc_sent_seq_nums_->begin(), nc_sent_seq_nums_->end(), seqno) != nc_sent_seq_nums_->end()) {
+    if (std::find(nc_sent_seq_nums_->begin(), nc_sent_seq_nums_->end(), seqno) == nc_sent_seq_nums_->end()) {
         nc_coding_window_->push_back(p);
         nc_sent_seq_nums_->push_back(seqno);
     }
