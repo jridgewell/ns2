@@ -333,6 +333,9 @@ void TcpSink::ack(Packet* opkt)
 		for (row = 0; row < rows; row++) {
 			pivot_row = nc_coefficient_matrix_->at(row);
 			prev_pivot = pivot;
+			if (pivot_row->size() <= row) {
+				break;
+			}
 			pivot = pivot_row->at(row);
 		
 			for (c = 0; c < pivot_row->size(); c++) {
