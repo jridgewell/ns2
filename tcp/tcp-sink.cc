@@ -309,6 +309,7 @@ void TcpSink::ack(Packet* opkt)
 		int* nc_coefficients = otcp->nc_coefficients_;
 		int row, r, c;
 		double pivot;
+		double prev_pivot;
 		double tmp;
 		
 		std::vector<double> *coefficients = new std::vector<double>(columns);
@@ -328,8 +329,10 @@ void TcpSink::ack(Packet* opkt)
 		std::vector<double> *pivot_row;
 		// Use gaussian elimination to sovle for packets
 		// TODO: perform gaussian elimination on data
+		pivot = 1;
 		for (row = 0; row < rows; row++) {
 			pivot_row = nc_coefficient_matrix_->at(row);
+			prev_pivot = pivot;
 			pivot = pivot_row->at(row);
 		
 			for (c = 0; c < pivot_row->size(); c++) {
@@ -346,8 +349,8 @@ void TcpSink::ack(Packet* opkt)
 					if (c == row) {
 						coefficients->at(c) = 0;
 					} else {
-						tmp = (pivot * coefficients->at(c)) / (pivot_row->at(c) * coefficients->at(row));
-						coefficients->at(c) = tmp;
+						tmp = (pivot * coefficients->at(c)) - (pivot_row->at(c) * coefficients->at(row));
+						coefficients->at(c) = tmp / prev_pivot;
 					}
 				}
 			}
