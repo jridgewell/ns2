@@ -526,7 +526,7 @@ TcpNcAgent::output(int seqno, int reason)
             	// int data_size = p->userdata()->size();
                 int nc_coding_wnd_size = nc_coding_window_->size();
                 // unsigned char *data = new unsigned char[data_size];
-                double *coefficients = new double[nc_coding_wnd_size];
+                int *coefficients = new int[nc_coding_wnd_size];
                 int i;
                 int d;
 

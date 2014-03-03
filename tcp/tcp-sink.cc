@@ -307,7 +307,7 @@ void TcpSink::ack(Packet* opkt)
 	if (otcp->nc_tx_serial_num() > 0) {
 		int columns = otcp->nc_coding_wnd_size();
 		int rows = nc_coefficient_matrix_->size() + 1;
-		double* nc_coefficients = otcp->nc_coefficients_;
+		int* nc_coefficients = otcp->nc_coefficients_;
 		int row, r, c;
 		double pivot;
 		double tmp;

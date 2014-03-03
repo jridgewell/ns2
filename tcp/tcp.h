@@ -60,7 +60,7 @@ struct hdr_tcp {
     
     int nc_coding_wnd_size_;    // TCP/NC
     int nc_tx_serial_num_;       // TCP/NC
-    double* nc_coefficients_;       // TCP/NC
+    int* nc_coefficients_;       // TCP/NC
 
 	static int offset_;	// offset for this header
 	inline static int& offset() { return offset_; }
