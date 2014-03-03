@@ -727,8 +727,8 @@ protected:
 	int nc_tx_serial_num_;
     double nc_num_;
     int nc_r_;
-    std::vector<Packet*>* nc_coding_window_;
-    std::vector<int>* nc_sent_seq_nums_;
+    Packet** nc_coding_window_;
+    int nc_coding_window_size_;
     std::vector<double>* nc_send_times_;
 };
 

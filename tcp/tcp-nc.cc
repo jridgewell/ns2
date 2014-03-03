@@ -89,8 +89,8 @@ TcpNcAgent::TcpNcAgent() : TcpAgent()
 	v_sendtime_ = NULL;
 	v_transmits_ = NULL;
 	nc_coding_window_ = NULL;
-	nc_sent_seq_nums_ = NULL;
 	nc_send_times_ = NULL;
+	nc_coding_window_size_ = 0;
 }
 
 TcpNcAgent::~TcpNcAgent()
@@ -100,12 +100,7 @@ TcpNcAgent::~TcpNcAgent()
 	if (v_transmits_)
 		delete []v_transmits_;
 	if (nc_coding_window_) {
-        nc_coding_window_->clear();
-		delete nc_coding_window_;
-	}
-	if (nc_sent_seq_nums_) {
-        nc_sent_seq_nums_->clear();
-		delete nc_sent_seq_nums_;
+		delete []nc_coding_window_;
 	}
 	if (nc_send_times_) {
         nc_send_times_->clear();
@@ -162,6 +157,7 @@ TcpNcAgent::reset()
     
     nc_tx_serial_num_ = 0;
     nc_num_ = 0;
+    nc_coding_window_size_ = 0;
 
 	TcpAgent::reset();
 }
@@ -189,7 +185,7 @@ TcpNcAgent::recv(Packet *pkt, Handler *)
 	double currentTime = vegastime();
 	hdr_tcp *tcph = hdr_tcp::access(pkt);
 	hdr_flags *flagh = hdr_flags::access(pkt);
-    
+
 #if 0
 	if (pkt->type_ != PT_ACK) {
 		Tcl::instance().evalf("%s error \"recieved non-ack\"",
@@ -512,30 +508,32 @@ TcpNcAgent::output(int seqno, int reason)
         nc_send_times_ = new std::vector<double>();
 	}
     
-    // Add Packet to the coding window if not already present
-    if (std::find(nc_sent_seq_nums_->begin(), nc_sent_seq_nums_->end(), seqno) == nc_sent_seq_nums_->end()) {
-        nc_coding_window_->push_back(p);
-        nc_sent_seq_nums_->push_back(seqno);
-    }
-    
+	// record a find grained send time and # of transmits 
+	int index = seqno % v_maxwnd_;
+	v_sendtime_[index] = vegastime();  
+	++v_transmits_[index];
+	
+	if (!nc_coding_window_[index]) {
+		nc_coding_window_size_++;
+        nc_coding_window_[index] = p;
+	}
+
     // nc_num_ += nc_r_; // TCP/NC does not specify how nc_num_ should be adjusted
     int r;
     // for (r = 0; r < floor(nc_num_); r++) {
     for (r = 0; r < nc_r_; r++) {
         nc_tx_serial_num_++;
-        
             	// int data_size = p->userdata()->size();
-                int nc_coding_wnd_size = nc_coding_window_->size();
                 // unsigned char *data = new unsigned char[data_size];
-                int *coefficients = new int[nc_coding_wnd_size];
+                int *coefficients = new int[nc_coding_window_size_];
                 int i;
                 int d;
 
                 // for (i = 0; i < data_size; i++) {
                 //     data[i] = '\0';
                 // }
-                for (i = 0; i < nc_coding_wnd_size; i++) {
-                    Packet *it = nc_coding_window_->at(i);
+                for (i = 0; i < nc_coding_window_size_; i++) {
+                    Packet *it = nc_coding_window_[(last_ack_ + 1 + i) % v_maxwnd_];
                     // unsigned char *p_data = it->accessdata();
                     int c = rand() % 256; // TODO: Bind Fieldsize for testing
                     coefficients[i] = c;
@@ -547,7 +545,7 @@ TcpNcAgent::output(int seqno, int reason)
         Packet* linear_combination = p->copy();
         tcph = hdr_tcp::access(linear_combination);
         tcph->nc_tx_serial_num() = nc_tx_serial_num_;
-        tcph->nc_coding_wnd_size() = nc_coding_wnd_size;
+        tcph->nc_coding_wnd_size() = nc_coding_window_size_;
         tcph->nc_coefficients_ = coefficients;
         
         // ((PacketData*)linear_combination->userdata())->set_data(data);
@@ -557,11 +555,6 @@ TcpNcAgent::output(int seqno, int reason)
 
     	send(linear_combination, 0);
     }
-
-	// record a find grained send time and # of transmits 
-	int index = seqno % v_maxwnd_;
-	v_sendtime_[index] = vegastime();  
-	++v_transmits_[index];
 
 	/* support ndatabytes_ in output - Lloyd Wood 14 March 2000 */
 	int bytes = hdr_cmn::access(p)->size(); 
