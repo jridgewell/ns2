@@ -321,6 +321,7 @@ OldSim instproc init args {
 	TclObject set varMap_(v-beta) v_beta_
 	TclObject set varMap_(v-gamma) v_gamma_
 	TclObject set varMap_(nc-r) nc_r_
+	TclObject set varMap_(nc-field-size) nc_field_size_
 
 	# Agent/TCP/NewReno
 	TclObject set varMap_(changes) newreno_changes_

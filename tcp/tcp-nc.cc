@@ -84,12 +84,14 @@ TcpNcAgent::~TcpNcAgent() {
 
 void TcpNcAgent::delay_bind_init_all() {
     delay_bind_init_one("nc_r_");
+    delay_bind_init_one("nc_field_size_");
     VegasTcpAgent::delay_bind_init_all();
     reset();
 }
 
 int TcpNcAgent::delay_bind_dispatch(const char *varName, const char *localName, TclObject *tracer) {
     if (delay_bind(varName, localName, "nc_r_", &nc_r_, tracer)) return TCL_OK;
+    if (delay_bind(varName, localName, "nc_field_size_", &nc_field_size_, tracer)) return TCL_OK;
     return VegasTcpAgent::delay_bind_dispatch(varName, localName, tracer);
 }
 
@@ -133,10 +135,10 @@ void TcpNcAgent::send(Packet* p, Handler* h) {
         nc_coding_window_[index] = p;
     }
 
-    // nc_num_ += nc_r_; // TCP/NC does not specify how nc_num_ should be adjusted
+    nc_num_ += nc_r_; // TCP/NC does not specify how nc_num_ should be adjusted
     int r;
-    // for (r = 0; r < floor(nc_num_); r++) {
-    for (r = 0; r < nc_r_; r++) {
+    for (r = 0; r < floor(nc_num_); r++) {
+    // for (r = 0; r < nc_r_; r++) {
         nc_tx_serial_num_++;
 
         // int data_size = p->userdata()->size();
@@ -150,7 +152,7 @@ void TcpNcAgent::send(Packet* p, Handler* h) {
         for (int i = 0; i < nc_coding_window_size_; i++) {
             // Packet *it = nc_coding_window_[(last_ack_ + 1 + i) % v_maxwnd_];
             // unsigned char *p_data = it->accessdata();
-            int c = (rand() % 255) + 1; // TODO: Bind Fieldsize for testing
+            int c = (rand() % (nc_field_size_ - 1)) + 1; // TODO: Bind Fieldsize for testing
             coefficients[i] = c;
             // for (d = 0; d < data_size; d++) {
             //     data[d] = data[d] + (c * p_data[d]);
@@ -170,4 +172,5 @@ void TcpNcAgent::send(Packet* p, Handler* h) {
 
         VegasTcpAgent::send(linear_combination, h);
     }
+    nc_num_ -= floor(nc_num_);
 }

@@ -1093,6 +1093,7 @@ Agent/TCP/NC set v_beta_ 3
 Agent/TCP/NC set v_gamma_ 1
 Agent/TCP/NC set v_rtt_ 0
 Agent/TCP/NC set nc_r_ 1
+Agent/TCP/NC set nc_field_size_ 256
 
 
 Agent/TCP/Vegas/RBP set rbp_scale_ 0.75
