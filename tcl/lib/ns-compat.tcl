@@ -642,9 +642,11 @@ OldSim instproc init args {
 	set classMap_(tcp-sack1) Agent/TCP/Sack1
 	set classMap_(sack1-tcp-sink) Agent/TCPSink/Sack1
 	set classMap_(tcp-sink-da) Agent/TCPSink/DelAck
+	set classMap_(tcp-sink-nc) Agent/TCPSink/NC
 	set classMap_(sack1-tcp-sink-da) Agent/TCPSink/Sack1/DelAck
 	set classMap_(sink) Agent/TCPSink
 	set classMap_(delsink) Agent/TCPSink/DelAck
+	set classMap_(tcpncsink) Agent/TCPSink/NC
 	set classMap_(sacksink) Agent/TCPSink ; # sacksink becomes TCPSink here
 	set classMap_(loss-monitor) Agent/LossMonitor
 	set classMap_(class) CBQClass

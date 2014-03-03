@@ -103,7 +103,6 @@ class TcpSink : public Agent {
 	friend class XcpSink;
 public:
 	TcpSink(Acker*);
-	~TcpSink();
 	void recv(Packet* pkt, Handler*);
 	void reset();
 	int command(int argc, const char*const* argv);
@@ -134,8 +133,6 @@ protected:
 				/* from previous incarnations */
         int ecn_syn_;           /* allow SYN/ACK packets to be ECN-capable */
 
-    std::vector<Packet*>* nc_coding_window_;
-    std::vector< std::vector<double>* >* nc_coefficient_matrix_;
 };
 
 class DelAckSink;
@@ -157,6 +154,18 @@ public:
 protected:
 	double interval_;
 	DelayTimer delay_timer_;
+};
+
+class TcpNcSink : public TcpSink {
+public:
+    TcpNcSink(Acker*);
+    ~TcpNcSink();
+    void recv(Packet* pkt, Handler*);
+protected:
+    virtual void add_to_ack(Packet* pkt);
+
+    std::vector<Packet*>* nc_coding_window_;
+    std::vector< std::vector<double>* >* nc_coefficient_matrix_;
 };
 
 #endif
