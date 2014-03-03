@@ -324,7 +324,6 @@ void TcpSink::ack(Packet* opkt)
 		nc_coding_window_->push_back(opkt->refcopy());
 		nc_coefficient_matrix_->push_back(coefficients);
 
-		std::vector< vector<double>* >::iterator it;
 		// resize the matrix
 		for (row = 0; row < rows; row++) {
 			nc_coefficient_matrix_->at(row)->resize(columns);
