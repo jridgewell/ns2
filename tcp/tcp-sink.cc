@@ -308,24 +308,22 @@ void TcpSink::ack(Packet* opkt)
 		int rows = nc_coefficient_matrix_->size() + 1;
 		int* nc_coefficients = otcp->nc_coefficients_;
 		int row, r, c;
-		double pivot;
-		double prev_pivot;
-		double tmp;
-		
 		std::vector<double> *coefficients = new std::vector<double>(columns);
+		double pivot, prev_pivot, tmp;
+
 		for (c = 0; c < columns; c++) {
 			coefficients->push_back(nc_coefficients[c]);
 		}
 
 		nc_coding_window_->push_back(opkt->refcopy());
 		nc_coefficient_matrix_->push_back(coefficients);
-		
 		std::vector< vector<double> >::iterator it;
+
 		// resize the matrix
 		for (row = 0; row < rows; row++) {
 			nc_coefficient_matrix_->at(row)->resize(columns);
 		}
-		
+
 		std::vector<double> *pivot_row;
 		// Use gaussian elimination to sovle for packets
 		// TODO: perform gaussian elimination on data
@@ -358,7 +356,7 @@ void TcpSink::ack(Packet* opkt)
 				}
 			}
 		}
-		
+
 		// Search for any packets that have been decoded,
 		// but ignore packets that were already.
 		for (r = acker_->Seqno() + 1; r < rows; r++) {
@@ -370,7 +368,7 @@ void TcpSink::ack(Packet* opkt)
 					zeros++;
 				}
 			}
-			
+
 			// Only one non-zero value means the row is solved.
 			// Send it's packet to the app
 			if (zeros == columns - 1) {
@@ -379,9 +377,10 @@ void TcpSink::ack(Packet* opkt)
 				int numBytes = hdr_cmn::access(pkt)->size();
 				// number of bytes in the packet just received
 				hdr_tcp *th = hdr_tcp::access(pkt);
+				th->seqno() = r;
 				acker_->update_ts(th->seqno(),th->ts(),ts_echo_rfc1323_);
 				// update the timestamp to echo
-	
+
 		      	numToDeliver = acker_->update(th->seqno(), numBytes);
 				// update the recv window; figure out how many in-order-bytes
 				// (if any) can be removed from the window and handed to the
