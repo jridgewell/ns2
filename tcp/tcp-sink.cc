@@ -363,8 +363,9 @@ void TcpSink::ack(Packet* opkt)
 		// but ignore packets that were already.
 		for (r = acker_->Seqno() + 1; r < rows; r++) {
 			int zeros = 0;
+			coefficients = nc_coefficient_matrix_->at(r);
 			for (c = 0; c < columns; c++) {
-				tmp = nc_coefficient_matrix_->at(r)->at(c);
+				tmp = coefficients->at(c);
 				if (-.000001 < tmp && tmp < .000001) {
 					zeros++;
 				}
