@@ -337,8 +337,8 @@ void TcpSink::ack(Packet* opkt)
 				break;
 			}
 			pivot = pivot_row->at(row);
-		
-			for (c = 0; c < pivot_row->size(); c++) {
+
+			for (c = 0; c < columns; c++) {
 				tmp = pivot_row->at(c) / pivot;
 				pivot_row->at(c) = tmp;
 			}
@@ -348,7 +348,7 @@ void TcpSink::ack(Packet* opkt)
 					continue;
 				}
 				coefficients = nc_coefficient_matrix_->at(r);
-				for (c = columns - 1; c >= row; c--) {
+				for (c = 0; c < columns; c++) {
 					if (c == row) {
 						coefficients->at(c) = 0;
 					} else {
