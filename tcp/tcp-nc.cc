@@ -188,10 +188,6 @@ TcpNcAgent::recv(Packet *pkt, Handler *)
 	hdr_tcp *tcph = hdr_tcp::access(pkt);
 	hdr_flags *flagh = hdr_flags::access(pkt);
     
-    // Rewrite Send time to trick vegas
-    double nc_send_time = nc_send_times_->at(tcph->nc_tx_serial_num());
-    v_sendtime_[tcph->seqno() % v_maxwnd_] = nc_send_time;
-
 #if 0
 	if (pkt->type_ != PT_ACK) {
 		Tcl::instance().evalf("%s error \"recieved non-ack\"",
@@ -213,6 +209,10 @@ TcpNcAgent::recv(Packet *pkt, Handler *)
 	if (flagh->ecnecho())
 		ecn(tcph->seqno());
 	if (tcph->seqno() > last_ack_) {
+	    // Rewrite Send time to trick vegas
+	    double nc_send_time = nc_send_times_->at(tcph->nc_tx_serial_num());
+	    v_sendtime_[tcph->seqno() % v_maxwnd_] = nc_send_time;
+
 		if (last_ack_ == 0 && delay_growth_) {
 			cwnd_ = initial_window();
 		}
