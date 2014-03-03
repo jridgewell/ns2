@@ -384,6 +384,12 @@ void TcpSink::ack(Packet* opkt)
 					recvBytes(numToDeliver);
 				}
 			}
+			// All zeros means the row is null.
+			// Remove it.
+			if (zeros == columns) {
+				nc_coding_window_->erase(nc_coding_window_->begin() + r);
+				nc_coefficient_matrix_->erase(nc_coefficient_matrix_->begin() + r);
+			}
 		}
 
 		// Officially called PREV_SERIAL_NUM,
