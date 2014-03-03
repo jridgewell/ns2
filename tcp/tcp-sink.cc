@@ -308,11 +308,11 @@ void TcpSink::ack(Packet* opkt)
 		int rows = nc_coefficient_matrix_->size() + 1;
 		int* nc_coefficients = otcp->nc_coefficients_;
 		int row, r, c;
-		std::vector<double> *coefficients = new std::vector<double>(columns);
 		double pivot, prev_pivot, tmp;
 
+		std::vector<double> *coefficients = new std::vector<double>(columns);
 		for (c = 0; c < columns; c++) {
-			coefficients->push_back(nc_coefficients[c]);
+			coefficients->at(c) = nc_coefficients[c];
 		}
 
 		nc_coding_window_->push_back(opkt->refcopy());
