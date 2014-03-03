@@ -221,7 +221,6 @@ TcpSink::delay_bind_init_all()
 #if defined(TCP_DELAY_BIND_ALL) && 0
         delay_bind_init_one("maxSackBlocks_");
 #endif /* TCP_DELAY_BIND_ALL */
-    delay_bind_init_one("tcp_nc_");
 
 	Agent::delay_bind_init_all();
 }
@@ -240,7 +239,6 @@ TcpSink::delay_bind_dispatch(const char *varName, const char *localName, TclObje
 #if defined(TCP_DELAY_BIND_ALL) && 0
         if (delay_bind(varName, localName, "maxSackBlocks_", &max_sack_blocks_, tracer)) return TCL_OK;
 #endif /* TCP_DELAY_BIND_ALL */
-    if (delay_bind_bool(varName, localName, "tcp_nc_", &tcp_nc_, tracer)) return TCL_OK;
 
         return Agent::delay_bind_dispatch(varName, localName, tracer);
 }
@@ -306,7 +304,7 @@ void TcpSink::ack(Packet* opkt)
 	}
 
 
-	if (tcp_nc_) {
+	if (otcp->nc_tx_serial_num() > 0) {
 		int columns = otcp->nc_coding_wnd_size();
 		int rows = nc_coefficient_matrix_->size() + 1;
 		double* nc_coefficients = otcp->nc_coefficients_;
@@ -475,7 +473,7 @@ void TcpSink::recv(Packet* pkt, Handler*)
 		Packet::free(pkt);
 		return;
 	}
-	if (tcp_nc_) {
+	if (th->nc_tx_serial_num() > 0) {
       	ack(pkt);
 		// ACK the packet
 		Packet::free(pkt);
