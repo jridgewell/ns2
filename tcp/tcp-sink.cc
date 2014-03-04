@@ -842,10 +842,10 @@ void TcpNcSink::recv(Packet* pkt, Handler* h) {
     // TODO: perform gaussian elimination on data
     for (row = 0; row < rows; row++) {
         pivot_row = nc_coefficient_matrix_->at(row);
-        if ((int) pivot_row->size() <= row) {
-            break;
-        }
         pivot = pivot_row->at(row);
+        if (!nonzero_value(pivot)) {
+            continue;
+        }
 
         for (c = 0; c < columns; c++) {
             pivot_row->at(c) = pivot_row->at(c) / pivot;
@@ -879,7 +879,7 @@ void TcpNcSink::recv(Packet* pkt, Handler* h) {
         coefficients = nc_coefficient_matrix_->at(r);
         for (c = 0; c < columns; c++) {
             tmp = coefficients->at(c);
-            if (-.000001 < tmp && tmp < .000001) {
+            if (!nonzero_value(tmp)) {
                 zeros++;
             }
         }
