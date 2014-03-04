@@ -39,6 +39,7 @@
 #include <limits>
 #include <math.h>
 #include <vector>
+#include <algorithm>
 #include "agent.h"
 #include "tcp.h"
 
@@ -48,6 +49,7 @@
 #define MWM (MWS-1)
 #define HS_MWS 65536
 #define HS_MWM (MWS-1)
+#define ZERO 1.0E-20
 /* For Tahoe TCP, the "window" parameter, representing the receiver's
  * advertised window, should be less than MWM.  For Reno TCP, the
  * "window" parameter should be less than MWM/2.
@@ -167,5 +169,17 @@ protected:
     std::vector<Packet*>* nc_coding_window_;
     std::vector< std::vector<double>* >* nc_coefficient_matrix_;
 };
+
+inline bool nonzero_value(double val) {
+    return (val > ZERO || val < -ZERO);
+}
+
+inline int first_nonzero_value(std::vector<double> *v) {
+    return std::distance(v->begin(), std::find_if(v->begin(), v->end(), nonzero_value));
+}
+
+inline bool sort_vector_rows(std::vector<double> *a, std::vector<double> *b) {
+    return first_nonzero_value(a) < first_nonzero_value(b);
+}
 
 #endif
