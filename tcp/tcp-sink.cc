@@ -800,6 +800,7 @@ void TcpNcSink::recv(Packet* pkt, Handler* h) {
     int zeros = 0;
     int row, r, c;
     double pivot, tmp;
+    bool deliver = true;
     std::vector<double> *pivot_row, *coefficients;
     Packet *p;
 
@@ -884,7 +885,11 @@ void TcpNcSink::recv(Packet* pkt, Handler* h) {
         // Only one non-zero value means the row is solved.
         // Send it's packet to the app
         if (zeros == columns - 1) {
-            num_to_update++;
+            if (deliver) {
+                num_to_update++;
+            }
+        } else {
+            deliver = false;
         }
         // All zeros means the row is null.
         // Remove it.
