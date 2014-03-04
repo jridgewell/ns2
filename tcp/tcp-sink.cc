@@ -812,14 +812,28 @@ void TcpNcSink::recv(Packet* pkt, Handler* h) {
         }
         row++;
     }
-    columns = r;
+    columns = seqno - acker_->Seqno();
 
     nc_coding_window_->push_back(pkt->refcopy());
     nc_coefficient_matrix_->push_back(coefficients);
 
     // resize the matrix
+    r = columns;
     for (row = 0; row < rows; row++) {
-        nc_coefficient_matrix_->at(row)->resize(columns);
+        coefficients = nc_coefficient_matrix_->at(row);
+        c = coefficients->size();
+        if (c < columns) {
+            coefficients->resize(columns);
+        } else {
+            columns = c;
+        }
+    }
+
+    if (columns != r) {
+        pivot_row = nc_coefficient_matrix_->at(0);
+        coefficients = nc_coefficient_matrix_->back();
+        nc_coefficient_matrix_->at(0) = coefficients;
+        nc_coefficient_matrix_->back() = pivot_row;
     }
 
     std::vector<double> *pivot_row;
