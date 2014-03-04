@@ -800,9 +800,10 @@ void TcpNcSink::recv(Packet* pkt, Handler* h) {
     int zeros = 0;
     int row, r, c;
     double pivot, tmp;
+    std::vector<double> *pivot_row, *coefficients;
     Packet *p;
 
-    std::vector<double> *coefficients = new std::vector<double>();
+    coefficients = new std::vector<double>();
     for (c = columns - 1, row = 0, r = 0; c >= 0; c--) {
         if (seqno - c > acker_->Seqno()) {
             r++;
@@ -836,10 +837,8 @@ void TcpNcSink::recv(Packet* pkt, Handler* h) {
         nc_coefficient_matrix_->back() = pivot_row;
     }
 
-    std::vector<double> *pivot_row;
     // Use gaussian elimination to sovle for packets
     // TODO: perform gaussian elimination on data
-    pivot = 1;
     for (row = 0; row < rows; row++) {
         pivot_row = nc_coefficient_matrix_->at(row);
         if ((int) pivot_row->size() <= row) {
