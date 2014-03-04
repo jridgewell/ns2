@@ -856,15 +856,11 @@ void TcpNcSink::recv(Packet* pkt, Handler* h) {
                 continue;
             }
             coefficients = nc_coefficient_matrix_->at(r);
-            for (c = row; c < columns; c++) {
-                tmp = coefficients->at(c);
-                if (tmp == 0) {
-                    continue;
-                }
+            for (c = columns - 1; c >= row; c--) {
                 if (c == row) {
                     coefficients->at(c) = 0;
                 } else {
-                    coefficients->at(c) = ((pivot * tmp) - (pivot_row->at(c) * coefficients->at(row)));
+                    coefficients->at(c) = ((pivot * coefficients->at(c)) - (pivot_row->at(c) * coefficients->at(row)));
                 }
             }
         }
