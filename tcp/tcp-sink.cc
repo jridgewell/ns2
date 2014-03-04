@@ -918,6 +918,10 @@ void TcpNcSink::recv(Packet* pkt, Handler* h) {
             coefficients = nc_coefficient_matrix_->at(r);
             coefficients->erase(coefficients->begin(), coefficients->begin() + num_to_update);
         }
+    } else {
+        tcph = hdr_tcp::access(pkt);
+        tcph->seqno() = acker_->Seqno();
+        ack(pkt);
     }
 
     acker_->nc_prev_serial_num_ = tx_serial_num;
