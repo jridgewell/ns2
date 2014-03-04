@@ -804,123 +804,127 @@ void TcpNcSink::recv(Packet* pkt, Handler* h) {
     std::vector<double> *pivot_row, *coefficients;
     Packet *p;
 
-    coefficients = new std::vector<double>();
-    for (c = columns - 1, row = 0, r = 0; c >= 0; c--) {
-        if (seqno - c > acker_->Seqno()) {
-            r++;
-            coefficients->push_back(nc_coefficients[row]);
-        } else {
-            // TODO: modify packet data to remove already solved packets from linear combination
+    if (seqno > acker_->Seqno()) {
+        coefficients = new std::vector<double>();
+        for (c = columns - 1, row = 0, r = 0; c >= 0; c--) {
+            if (seqno - c > acker_->Seqno()) {
+                r++;
+                coefficients->push_back(nc_coefficients[row]);
+            } else {
+                // TODO: modify packet data to remove already solved packets from linear combination
+            }
+            row++;
         }
-        row++;
-    }
-    columns = seqno - acker_->Seqno();
+        columns = seqno - acker_->Seqno();
 
-    nc_coding_window_->push_back(pkt->refcopy());
-    nc_coefficient_matrix_->push_back(coefficients);
+        nc_coding_window_->push_back(pkt->refcopy());
+        nc_coefficient_matrix_->push_back(coefficients);
 
-    // resize the matrix
-    r = columns;
-    for (row = 0; row < rows; row++) {
-        coefficients = nc_coefficient_matrix_->at(row);
-        c = coefficients->size();
-        if (c < columns) {
-            coefficients->resize(columns);
-        } else {
-            columns = c;
-        }
-    }
-
-    if (columns != r) {
-        pivot_row = nc_coefficient_matrix_->at(0);
-        coefficients = nc_coefficient_matrix_->back();
-        nc_coefficient_matrix_->at(0) = coefficients;
-        nc_coefficient_matrix_->back() = pivot_row;
-    }
-
-    // Use gaussian elimination to sovle for packets
-    // TODO: perform gaussian elimination on data
-    for (row = 0; row < rows; row++) {
-        pivot_row = nc_coefficient_matrix_->at(row);
-        pivot = pivot_row->at(row);
-        if (!nonzero_value(pivot)) {
-            continue;
+        // resize the matrix
+        r = columns;
+        for (row = 0; row < rows; row++) {
+            coefficients = nc_coefficient_matrix_->at(row);
+            c = coefficients->size();
+            if (c < columns) {
+                coefficients->resize(columns);
+            } else {
+                columns = c;
+            }
         }
 
-        for (c = 0; c < columns; c++) {
-            pivot_row->at(c) = pivot_row->at(c) / pivot;
+        if (columns != r) {
+            pivot_row = nc_coefficient_matrix_->at(0);
+            coefficients = nc_coefficient_matrix_->back();
+            nc_coefficient_matrix_->at(0) = coefficients;
+            nc_coefficient_matrix_->back() = pivot_row;
         }
 
-        for (r = 0; r < rows; r++) {
-            if (r == row) {
+        // Use gaussian elimination to sovle for packets
+        // TODO: perform gaussian elimination on data
+        for (row = 0; row < rows; row++) {
+            pivot_row = nc_coefficient_matrix_->at(row);
+            pivot = pivot_row->at(row);
+            if (!nonzero_value(pivot)) {
                 continue;
             }
-            coefficients = nc_coefficient_matrix_->at(r);
-            for (c = columns - 1; c >= row; c--) {
-                if (c == row) {
-                    coefficients->at(c) = 0;
-                } else {
-                    coefficients->at(c) = ((pivot * coefficients->at(c)) - (pivot_row->at(c) * coefficients->at(row)));
+
+            for (c = 0; c < columns; c++) {
+                pivot_row->at(c) = pivot_row->at(c) / pivot;
+            }
+
+            for (r = 0; r < rows; r++) {
+                if (r == row) {
+                    continue;
+                }
+                coefficients = nc_coefficient_matrix_->at(r);
+                for (c = columns - 1; c >= row; c--) {
+                    if (c == row) {
+                        coefficients->at(c) = 0;
+                    } else {
+                        coefficients->at(c) = ((pivot * coefficients->at(c)) - (pivot_row->at(c) * coefficients->at(row)));
+                    }
                 }
             }
         }
-    }
 
-    std::sort(nc_coefficient_matrix_->begin(), nc_coefficient_matrix_->end(), sort_vector_rows);
+        std::sort(nc_coefficient_matrix_->begin(), nc_coefficient_matrix_->end(), sort_vector_rows);
 
-    // Search for any packets that have been decoded,
-    // but ignore packets that were already.
-    for (r = 0; r < rows; r++) {
-        zeros = 0;
-        coefficients = nc_coefficient_matrix_->at(r);
-        for (c = 0; c < columns; c++) {
-            tmp = coefficients->at(c);
-            if (!nonzero_value(tmp)) {
-                zeros++;
+        // Search for any packets that have been decoded,
+        // but ignore packets that were already.
+        for (r = 0; r < rows; r++) {
+            zeros = 0;
+            coefficients = nc_coefficient_matrix_->at(r);
+            for (c = 0; c < columns; c++) {
+                tmp = coefficients->at(c);
+                if (!nonzero_value(tmp)) {
+                    zeros++;
+                }
+            }
+
+            // Only one non-zero value means the row is solved.
+            // Send it's packet to the app
+            if (zeros == columns - 1) {
+                if (deliver) {
+                    num_to_update++;
+                }
+            } else {
+                deliver = false;
+            }
+            // All zeros means the row is null.
+            // Remove it.
+            if (zeros == columns) {
+                p = nc_coding_window_->at(r);
+                // Free it twice.
+                // Once for our copy, once for what would have been ack's copy
+                Packet::free(p);
+                Packet::free(p);
+                nc_coding_window_->erase(nc_coding_window_->begin() + r);
+                nc_coefficient_matrix_->erase(nc_coefficient_matrix_->begin() + r);
+                rows--;
+                r--;
             }
         }
+        for (r = 0; r < num_to_update; r++) {
+            p = nc_coding_window_->at(r);
+            tcph = hdr_tcp::access(p);
+            tcph->seqno() = acker_->Seqno() + 1;
 
-        // Only one non-zero value means the row is solved.
-        // Send it's packet to the app
-        if (zeros == columns - 1) {
-            if (deliver) {
-                num_to_update++;
+            TcpSink::recv(p, h);
+        }
+        if (num_to_update) {
+            nc_coding_window_->erase(nc_coding_window_->begin(), nc_coding_window_->begin() + num_to_update);
+            nc_coefficient_matrix_->erase(nc_coefficient_matrix_->begin(), nc_coefficient_matrix_->begin() + num_to_update);
+            rows -= num_to_update;
+            for (r = 0; r < rows; r++) {
+                coefficients = nc_coefficient_matrix_->at(r);
+                coefficients->erase(coefficients->begin(), coefficients->begin() + num_to_update);
             }
         } else {
-            deliver = false;
-        }
-        // All zeros means the row is null.
-        // Remove it.
-        if (zeros == columns) {
-            p = nc_coding_window_->at(r);
-            // Free it twice.
-            // Once for our copy, once for what would have been ack's copy
-            Packet::free(p);
-            Packet::free(p);
-            nc_coding_window_->erase(nc_coding_window_->begin() + r);
-            nc_coefficient_matrix_->erase(nc_coefficient_matrix_->begin() + r);
-            rows--;
-            r--;
-        }
-    }
-    for (r = 0; r < num_to_update; r++) {
-        p = nc_coding_window_->at(r);
-        tcph = hdr_tcp::access(p);
-        tcph->seqno() = acker_->Seqno() + 1;
-
-        TcpSink::recv(p, h);
-    }
-    if (num_to_update) {
-        nc_coding_window_->erase(nc_coding_window_->begin(), nc_coding_window_->begin() + num_to_update);
-        nc_coefficient_matrix_->erase(nc_coefficient_matrix_->begin(), nc_coefficient_matrix_->begin() + num_to_update);
-        rows -= num_to_update;
-        for (r = 0; r < rows; r++) {
-            coefficients = nc_coefficient_matrix_->at(r);
-            coefficients->erase(coefficients->begin(), coefficients->begin() + num_to_update);
+            tcph = hdr_tcp::access(pkt);
+            tcph->seqno() = acker_->Seqno();
+            ack(pkt);
         }
     } else {
-        tcph = hdr_tcp::access(pkt);
-        tcph->seqno() = acker_->Seqno();
         ack(pkt);
     }
 
