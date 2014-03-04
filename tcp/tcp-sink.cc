@@ -873,6 +873,7 @@ void TcpNcSink::recv(Packet* pkt, Handler* h) {
     // Search for any packets that have been decoded,
     // but ignore packets that were already.
     for (r = 0; r < rows; r++) {
+        zeros = 0;
         coefficients = nc_coefficient_matrix_->at(r);
         for (c = 0; c < columns; c++) {
             tmp = coefficients->at(c);
