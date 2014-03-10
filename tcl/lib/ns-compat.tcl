@@ -320,6 +320,8 @@ OldSim instproc init args {
 	TclObject set varMap_(v-alpha) v_alpha_
 	TclObject set varMap_(v-beta) v_beta_
 	TclObject set varMap_(v-gamma) v_gamma_
+	TclObject set varMap_(nc-r) nc_r_
+	TclObject set varMap_(nc-field-size) nc_field_size_
 
 	# Agent/TCP/NewReno
 	TclObject set varMap_(changes) newreno_changes_
@@ -629,6 +631,7 @@ OldSim instproc init args {
 	set classMap_(tcp) Agent/TCP
 	set classMap_(tcp-reno) Agent/TCP/Reno
 	set classMap_(tcp-vegas) Agent/TCP/Vegas
+	set classMap_(tcp-nc) Agent/TCP/NC
 	set classMap_(tcp-full) Agent/TCP/FullTcp
 	set classMap_(fulltcp) Agent/TCP/FullTcp
 	set classMap_(tcp-fack) Agent/TCP/Fack
@@ -640,9 +643,11 @@ OldSim instproc init args {
 	set classMap_(tcp-sack1) Agent/TCP/Sack1
 	set classMap_(sack1-tcp-sink) Agent/TCPSink/Sack1
 	set classMap_(tcp-sink-da) Agent/TCPSink/DelAck
+	set classMap_(tcp-sink-nc) Agent/TCPSink/NC
 	set classMap_(sack1-tcp-sink-da) Agent/TCPSink/Sack1/DelAck
 	set classMap_(sink) Agent/TCPSink
 	set classMap_(delsink) Agent/TCPSink/DelAck
+	set classMap_(tcpncsink) Agent/TCPSink/NC
 	set classMap_(sacksink) Agent/TCPSink ; # sacksink becomes TCPSink here
 	set classMap_(loss-monitor) Agent/LossMonitor
 	set classMap_(class) CBQClass

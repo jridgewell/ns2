@@ -398,7 +398,7 @@ int MediaSegmentList::overlap_size(const MediaSegment& s) const
 	soff = s.start();
 	eoff = s.end();
 	while ((tmp != NULL) && (tmp->overlap(s))) {
-		res += min(eoff, tmp->end()) - max(soff, tmp->start());
+		res += min(eoff, tmp->end()) - ns2max(soff, tmp->start());
 		soff = tmp->end();
 		tmp = tmp->next();
 	}
@@ -797,7 +797,7 @@ rate: %.3f, avgrate: %.3f, srtt:%.3f\n", rate, avgrate_, srtt);
 		
 		// Start playout if we have enough data for L0
 		// The amount of buffered data for startup can be diff
-		bufneeded = max(4*BufNeed((LAYERBW_-rate/2.0), slope), 
+		bufneeded = ns2max(4*BufNeed((LAYERBW_-rate/2.0), slope), 
 				2*MWM(srtt));
 
 		if (buffer_[0] >= bufneeded) {

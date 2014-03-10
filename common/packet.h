@@ -198,7 +198,7 @@ static const packet_t PT_DCCP_RESET = 71;
 
         // M-DART packets
 static const packet_t PT_MDART = 72;
-	
+
         // insert new packet types here
 static packet_t       PT_NTYPE = 73; // This MUST be the LAST one
 

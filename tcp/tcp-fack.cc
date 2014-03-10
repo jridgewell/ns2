@@ -78,13 +78,13 @@ void FackTcpAgent::oldack(Packet* pkt)
 
 	last_ack_ = tcph->seqno();
 	highest_ack_ = last_ack_;
-	fack_ = max(fack_,highest_ack_);
+	fack_ = ns2max(fack_,highest_ack_);
 	/* 
 	 * There are conditions under which certain versions of TCP (e.g., tcp-fs)
 	 * retract maxseq_. The following line of code helps in those cases. For
 	 * versions of TCP, it is a NOP.
 */
-	maxseq_ = max(maxseq_, highest_ack_);
+	maxseq_ = ns2max(maxseq_, highest_ack_);
 	if (t_seqno_ < last_ack_ + 1)
 		t_seqno_ = last_ack_ + 1;
 	newtimer(pkt);

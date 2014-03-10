@@ -2308,7 +2308,7 @@ void SctpAgent::RttUpdate(double dTxTime, SctpDest_S *spDest)
     {
       spDest->dRttVar 
 	= ( (1 - RTO_BETA) * spDest->dRttVar 
-	    + RTO_BETA * abs(spDest->dSrtt - dNewRtt) );
+	    + RTO_BETA * ns2abs(spDest->dSrtt - dNewRtt) );
 
       spDest->dSrtt 
 	= (1 - RTO_ALPHA) * spDest->dSrtt + RTO_ALPHA * dNewRtt;

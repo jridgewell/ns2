@@ -35,6 +35,8 @@
 #ifndef ns_tcp_h
 #define ns_tcp_h
 
+#include <vector>
+
 #include "agent.h"
 #include "packet.h"
 
@@ -55,6 +57,16 @@ struct hdr_tcp {
 	int tcp_flags_;         /* TCP flags for FullTcp */
 	int last_rtt_;		/* more recent RTT measurement in ms, */
 				/*   for statistics only */
+    
+    int nc_coding_wnd_size_;    // TCP/NC
+    int nc_tx_serial_num_;       // TCP/NC
+    int* nc_coefficients_;       // TCP/NC
+	
+	~hdr_tcp() {
+		if(nc_coefficients_) {
+			delete []nc_coefficients_;
+		}
+	}
 
 	static int offset_;	// offset for this header
 	inline static int& offset() { return offset_; }
@@ -74,6 +86,8 @@ struct hdr_tcp {
 	int& ackno() { return (ackno_); }  
 	int& flags() { return (tcp_flags_); }
 	int& last_rtt() { return (last_rtt_); }
+	int& nc_tx_serial_num() { return (nc_tx_serial_num_); }
+	int& nc_coding_wnd_size() { return (nc_coding_wnd_size_); }
 };
 
 /* these are used to mark packets as to why we xmitted them */
@@ -649,6 +663,28 @@ protected:
 	double v_actual_;	// actual send rate (pkt/s; needed for tcp-rbp)
 
 	int ns_vegas_fix_level_;   // see comment at end of tcp-vegas.cc for details of fixes
+};
+
+
+/* TCP/NC (TcpNcAgent) */
+class TcpNcAgent : public virtual VegasTcpAgent {
+ public:
+	TcpNcAgent();
+	~TcpNcAgent();
+protected:
+	virtual void recv_newack_helper(Packet*);
+	void reset();
+	virtual void delay_bind_init_all();
+	virtual int delay_bind_dispatch(const char *varName, const char *localName, TclObject *tracer);
+	virtual void send(Packet* p, Handler* h);
+
+    int nc_tx_serial_num_;
+    double nc_num_;
+    int nc_r_;
+    int nc_field_size_;
+    Packet** nc_coding_window_;
+    int nc_coding_window_size_;
+    std::vector<double>* nc_send_times_;
 };
 
 // Local Variables:

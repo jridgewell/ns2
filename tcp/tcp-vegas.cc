@@ -303,10 +303,9 @@ VegasTcpAgent::recv(Packet *pkt, Handler *)
 		// reset v_sendtime for acked pkts and incr v_transmits_
 		double sendTime = v_sendtime_[tcph->seqno()%v_maxwnd_];
 		int transmits = v_transmits_[tcph->seqno()% v_maxwnd_];
-		int range = tcph->seqno() - oldack;
-		for(int k=((oldack+1) %v_maxwnd_); 
-			k<=(tcph->seqno()%v_maxwnd_) && range >0 ; 
-			k=((k+1) % v_maxwnd_), range--) {
+        int k = oldack;
+		for(int range = tcph->seqno() - oldack; range > 0; range--) {
+			k = (k + 1) % v_maxwnd_;
 			v_sendtime_[k] = -1.0;
 			v_transmits_[k] = 0;
 		}

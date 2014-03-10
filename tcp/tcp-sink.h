@@ -36,7 +36,10 @@
 #ifndef ns_tcpsink_h
 #define ns_tcpsink_h
 
+#include <limits>
 #include <math.h>
+#include <vector>
+#include <algorithm>
 #include "agent.h"
 #include "tcp.h"
 
@@ -46,6 +49,7 @@
 #define MWM (MWS-1)
 #define HS_MWS 65536
 #define HS_MWM (MWS-1)
+#define ZERO 1.0E-20
 /* For Tahoe TCP, the "window" parameter, representing the receiver's
  * advertised window, should be less than MWM.  For Reno TCP, the
  * "window" parameter should be less than MWM/2.
@@ -77,7 +81,8 @@ protected:
 	double ts_to_echo_;	/* timestamp to echo to peer */
 	int is_dup_;		// A duplicate packet.
 public:
-        int last_ack_sent_;     // For updating timestamps, from Andrei Gurtov.
+    int last_ack_sent_;     // For updating timestamps, from Andrei Gurtov.
+    int nc_prev_serial_num_;
 };
 
 // derive Sacker from TclObject to allow for traced variable
@@ -152,5 +157,29 @@ protected:
 	double interval_;
 	DelayTimer delay_timer_;
 };
+
+class TcpNcSink : public TcpSink {
+public:
+    TcpNcSink(Acker*);
+    ~TcpNcSink();
+    void recv(Packet* pkt, Handler*);
+protected:
+    virtual void add_to_ack(Packet* pkt);
+
+    std::vector<Packet*>* nc_coding_window_;
+    std::vector< std::vector<double>* >* nc_coefficient_matrix_;
+};
+
+inline bool nonzero_value(double val) {
+    return (val > ZERO || val < -ZERO);
+}
+
+inline int first_nonzero_value(std::vector<double> *v) {
+    return std::distance(v->begin(), std::find_if(v->begin(), v->end(), nonzero_value));
+}
+
+inline bool sort_vector_rows(std::vector<double> *a, std::vector<double> *b) {
+    return first_nonzero_value(a) < first_nonzero_value(b);
+}
 
 #endif
