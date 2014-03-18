@@ -680,7 +680,7 @@ protected:
 
     int nc_tx_serial_num_;
     double nc_num_;
-    int nc_r_;
+    double nc_r_;
     int nc_field_size_;
     Packet** nc_coding_window_;
     int nc_coding_window_size_;
