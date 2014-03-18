@@ -55,6 +55,12 @@
  * "window" parameter should be less than MWM/2.
  */
 
+typedef enum MatrixStatus {
+    SINGULAR,
+    NON_SINGULAR,
+    DEFICIENT
+} MatrixStatus;
+
 class TcpSink;
 class Acker {
 public:
@@ -83,6 +89,8 @@ protected:
 public:
     int last_ack_sent_;     // For updating timestamps, from Andrei Gurtov.
     int nc_prev_serial_num_;
+    int nc_next_send_;
+    int nc_next_unseen_;
 };
 
 // derive Sacker from TclObject to allow for traced variable
@@ -163,6 +171,7 @@ public:
     TcpNcSink(Acker*);
     ~TcpNcSink();
     void recv(Packet* pkt, Handler*);
+	virtual void send(Packet* p, Handler* h);
 protected:
     virtual void add_to_ack(Packet* pkt);
 

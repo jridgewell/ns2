@@ -48,7 +48,8 @@ public:
 } class_tcpsink;
 
 Acker::Acker() : next_(0), maxseen_(0), wndmask_(MWM), ecn_unacked_(0), 
-	ts_to_echo_(0), last_ack_sent_(0), nc_prev_serial_num_(0)
+	ts_to_echo_(0), last_ack_sent_(0), nc_prev_serial_num_(0), nc_next_send_(-1), 
+    nc_next_unseen_(-1)
 {
 	seen_ = new int[MWS];
 	memset(seen_, 0, (sizeof(int) * (MWS)));
@@ -57,6 +58,8 @@ Acker::Acker() : next_(0), maxseen_(0), wndmask_(MWM), ecn_unacked_(0),
 void Acker::reset() 
 {
 	next_ = 0;
+	nc_next_send_ = -1;
+	nc_next_unseen_ = -1;
 	maxseen_ = 0;
 	memset(seen_, 0, (sizeof(int) * (wndmask_ + 1)));
 }	
@@ -789,6 +792,67 @@ void TcpNcSink::add_to_ack(Packet* pkt) {
     tcph->nc_tx_serial_num() = acker_->nc_prev_serial_num_;
 }
 
+
+int find_max(const vector< vector<double>* >* m, int row) {
+    int rows = m->size();
+    double pivot, max_pivot;
+
+    for (int i = row + 1; i < rows; i++) {
+        pivot = m->at(i)->at(row);
+        if (pivot < 0) { pivot *= -1; }
+        if (pivot > max_pivot) {
+            max_pivot = pivot;
+            row = i;
+        }
+    }
+
+    return row;
+}
+
+vector<double>* BackSubstitution(const vector< vector<double>* >* m /*, const double<vector>* b*/) {
+    int rows = m->size();
+    vector<double> *x = new vector<double>(rows); // Creates the vector for the solution
+    int row, column;
+    double s;
+
+    for (row = rows - 1; row >= 0; row--) {
+        s = 0;
+        for (column = row + 1; column < rows; column++) {
+            s = s + m->at(row)->at(column) * x->at(column);
+        }
+        // x->at(row) = (b->at(row) - s) / m->at(row)->at(row);
+    }
+
+    return x;
+}
+
+MatrixStatus GaussianElimination(vector< vector<double>* >* m /*, vector<double>* b*/) {
+    int rows = m->size();
+    int columns = m->front()->size();
+    int pivot_row;
+    int row, column, k;
+
+    if (rows < columns) { return DEFICIENT; }
+    for (k = 0; k < rows; k++) {
+        pivot_row = find_max(m, k);
+        if (!nonzero_value(m->at(pivot_row)->at(k))) { return SINGULAR; } // Singular matrix
+
+        swap(m->at(k), m->at(pivot_row));
+        // swap(b->at(k), b->at(pivot_row));
+
+        for (row = k + 1; row < rows; row++) {
+            double c = m->at(row)->at(k) / m->at(k)->at(k);
+            m->at(row)->at(k) = 0;
+            for (column = k + 1; column < columns; column++) {
+                m->at(row)->at(column) = m->at(row)->at(column) - (c * m->at(k)->at(column));
+            }
+            // b->at(row) = b->at(row) - (c * b->at(k));
+        }
+    }
+
+    return NON_SINGULAR;
+}
+
 void TcpNcSink::recv(Packet* pkt, Handler* h) {
     hdr_tcp *tcph = hdr_tcp::access(pkt);
     int seqno = tcph->seqno();
@@ -796,32 +860,31 @@ void TcpNcSink::recv(Packet* pkt, Handler* h) {
     int columns = tcph->nc_coding_wnd_size();
     int rows = nc_coefficient_matrix_->size() + 1;
     int* nc_coefficients = tcph->nc_coefficients_;
-    int num_to_update = 0;
-    int zeros = 0;
     int row, r, c;
-    double pivot, tmp;
-    bool deliver = true;
-    std::vector<double> *pivot_row, *coefficients;
+    std::vector<double> *coefficients;
     Packet *p;
 
     if (seqno > acker_->Seqno()) {
         coefficients = new std::vector<double>();
-        for (c = columns - 1, row = 0, r = 0; c >= 0; c--) {
-            if (seqno - c > acker_->Seqno()) {
-                r++;
+        r = acker_->nc_next_unseen_ - acker_->Seqno();
+        while (r-- > 0) {
+            coefficients->push_back(0);
+        }
+        for (c = columns - 1, row = 0; c >= 0; c--) {
+            if (seqno - c > acker_->nc_next_unseen_) {
                 coefficients->push_back(nc_coefficients[row]);
             } else {
                 // TODO: modify packet data to remove already solved packets from linear combination
             }
             row++;
         }
-        columns = seqno - acker_->Seqno();
+        columns = coefficients->size();
+        acker_->nc_next_unseen_++;
 
         nc_coding_window_->push_back(pkt->refcopy());
         nc_coefficient_matrix_->push_back(coefficients);
 
         // resize the matrix
-        r = columns;
         for (row = 0; row < rows; row++) {
             coefficients = nc_coefficient_matrix_->at(row);
             c = coefficients->size();
@@ -832,93 +895,23 @@ void TcpNcSink::recv(Packet* pkt, Handler* h) {
             }
         }
 
-        if (columns != r) {
-            pivot_row = nc_coefficient_matrix_->at(0);
-            coefficients = nc_coefficient_matrix_->back();
-            nc_coefficient_matrix_->at(0) = coefficients;
-            nc_coefficient_matrix_->back() = pivot_row;
-        }
-
         // Use gaussian elimination to sovle for packets
         // TODO: perform gaussian elimination on data
-        for (row = 0; row < rows; row++) {
-            pivot_row = nc_coefficient_matrix_->at(row);
-            pivot = pivot_row->at(row);
-            if (!nonzero_value(pivot)) {
-                continue;
-            }
+        MatrixStatus status = GaussianElimination(nc_coefficient_matrix_);
 
-            for (c = 0; c < columns; c++) {
-                pivot_row->at(c) = pivot_row->at(c) / pivot;
-            }
-
+        if (status == NON_SINGULAR) {
+            acker_->nc_next_send_ += rows;
             for (r = 0; r < rows; r++) {
-                if (r == row) {
-                    continue;
-                }
-                coefficients = nc_coefficient_matrix_->at(r);
-                for (c = columns - 1; c >= row; c--) {
-                    if (c == row) {
-                        coefficients->at(c) = 0;
-                    } else {
-                        coefficients->at(c) = ((pivot * coefficients->at(c)) - (pivot_row->at(c) * coefficients->at(row)));
-                    }
-                }
-            }
-        }
-
-        std::sort(nc_coefficient_matrix_->begin(), nc_coefficient_matrix_->end(), sort_vector_rows);
-
-        // Search for any packets that have been decoded,
-        // but ignore packets that were already.
-        for (r = 0; r < rows; r++) {
-            zeros = 0;
-            coefficients = nc_coefficient_matrix_->at(r);
-            for (c = 0; c < columns; c++) {
-                tmp = coefficients->at(c);
-                if (!nonzero_value(tmp)) {
-                    zeros++;
-                }
-            }
-
-            // Only one non-zero value means the row is solved.
-            // Send it's packet to the app
-            if (zeros == columns - 1) {
-                if (deliver) {
-                    num_to_update++;
-                }
-            } else {
-                deliver = false;
-            }
-            // All zeros means the row is null.
-            // Remove it.
-            if (zeros == columns) {
                 p = nc_coding_window_->at(r);
-                // Free it twice.
-                // Once for our copy, once for what would have been ack's copy
-                Packet::free(p);
-                Packet::free(p);
-                nc_coding_window_->erase(nc_coding_window_->begin() + r);
-                nc_coefficient_matrix_->erase(nc_coefficient_matrix_->begin() + r);
-                rows--;
-                r--;
-            }
-        }
-        for (r = 0; r < num_to_update; r++) {
-            p = nc_coding_window_->at(r);
-            tcph = hdr_tcp::access(p);
-            tcph->seqno() = acker_->Seqno() + 1;
+                tcph = hdr_tcp::access(p);
+                tcph->seqno() = acker_->Seqno() + 1;
 
-            TcpSink::recv(p, h);
-        }
-        if (num_to_update) {
-            nc_coding_window_->erase(nc_coding_window_->begin(), nc_coding_window_->begin() + num_to_update);
-            nc_coefficient_matrix_->erase(nc_coefficient_matrix_->begin(), nc_coefficient_matrix_->begin() + num_to_update);
-            rows -= num_to_update;
-            for (r = 0; r < rows; r++) {
-                coefficients = nc_coefficient_matrix_->at(r);
-                coefficients->erase(coefficients->begin(), coefficients->begin() + num_to_update);
+                TcpSink::recv(p, h);
+                Packet::free(p);
             }
+            nc_coding_window_->erase(nc_coding_window_->begin(), nc_coding_window_->end());
+            nc_coefficient_matrix_->erase(nc_coefficient_matrix_->begin(), nc_coefficient_matrix_->end());
+            rows = 0;
         } else {
             tcph = hdr_tcp::access(pkt);
             tcph->seqno() = acker_->Seqno();
@@ -929,4 +922,14 @@ void TcpNcSink::recv(Packet* pkt, Handler* h) {
     }
 
     acker_->nc_prev_serial_num_ = tx_serial_num;
+}
+
+void TcpNcSink::send(Packet* p, Handler* h) {
+    hdr_tcp *tcph = hdr_tcp::access(p);
+    if (tcph->seqno() == acker_->nc_next_send_) {
+        tcph->seqno() = acker_->nc_next_unseen_;
+        TcpSink::send(p, h);
+    } else {
+        Packet::free(p);
+    }
 }
