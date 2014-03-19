@@ -48,8 +48,7 @@ public:
 } class_tcpsink;
 
 Acker::Acker() : next_(0), maxseen_(0), wndmask_(MWM), ecn_unacked_(0), 
-	ts_to_echo_(0), last_ack_sent_(0), nc_prev_serial_num_(0), nc_next_send_(-1), 
-    nc_next_unseen_(-1)
+	ts_to_echo_(0), last_ack_sent_(0), nc_prev_serial_num_(0), nc_next_send_(-1)
 {
 	seen_ = new int[MWS];
 	memset(seen_, 0, (sizeof(int) * (MWS)));
@@ -59,7 +58,6 @@ void Acker::reset()
 {
 	next_ = 0;
 	nc_next_send_ = -1;
-	nc_next_unseen_ = -1;
 	maxseen_ = 0;
 	memset(seen_, 0, (sizeof(int) * (wndmask_ + 1)));
 }	
@@ -900,6 +898,10 @@ void TcpNcSink::recv(Packet* pkt, Handler* h) {
 
         if (status == NON_SINGULAR) {
             acker_->nc_next_send_ += rows;
+            // Erase nc_coefficient_matrix_ before acking packets,
+            // because it's size will be used to determine the oldest
+            // unseen packet.
+            nc_coefficient_matrix_->erase(nc_coefficient_matrix_->begin(), nc_coefficient_matrix_->end());
             for (r = 0; r < rows; r++) {
                 p = nc_coding_window_->at(r);
                 tcph = hdr_tcp::access(p);
@@ -909,7 +911,6 @@ void TcpNcSink::recv(Packet* pkt, Handler* h) {
                 Packet::free(p);
             }
             nc_coding_window_->erase(nc_coding_window_->begin(), nc_coding_window_->end());
-            nc_coefficient_matrix_->erase(nc_coefficient_matrix_->begin(), nc_coefficient_matrix_->end());
             rows = 0;
         } else {
             tcph = hdr_tcp::access(pkt);
@@ -926,7 +927,8 @@ void TcpNcSink::recv(Packet* pkt, Handler* h) {
 void TcpNcSink::send(Packet* p, Handler* h) {
     hdr_tcp *tcph = hdr_tcp::access(p);
     if (tcph->seqno() == acker_->nc_next_send_) {
-        tcph->seqno() = acker_->nc_next_unseen_;
+        // Increment seqno to reflect oldest unseen packet
+        tcph->seqno() += nc_coefficient_matrix_->size();
         TcpSink::send(p, h);
     } else {
         Packet::free(p);

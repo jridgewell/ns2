@@ -90,7 +90,6 @@ public:
     int last_ack_sent_;     // For updating timestamps, from Andrei Gurtov.
     int nc_prev_serial_num_;
     int nc_next_send_;
-    int nc_next_unseen_;
 };
 
 // derive Sacker from TclObject to allow for traced variable
@@ -182,13 +181,4 @@ protected:
 inline bool nonzero_value(double val) {
     return (val > ZERO || val < -ZERO);
 }
-
-inline int first_nonzero_value(std::vector<double> *v) {
-    return std::distance(v->begin(), std::find_if(v->begin(), v->end(), nonzero_value));
-}
-
-inline bool sort_vector_rows(std::vector<double> *a, std::vector<double> *b) {
-    return first_nonzero_value(a) < first_nonzero_value(b);
-}
-
 #endif
