@@ -178,7 +178,7 @@ protected:
     std::vector< std::vector<double>* >* nc_coefficient_matrix_;
 };
 
-inline bool nonzero_value(double val) {
-    return (val > ZERO || val < -ZERO);
+inline bool zero_value(double val) {
+    return (val < ZERO && val > -ZERO);
 }
 #endif
