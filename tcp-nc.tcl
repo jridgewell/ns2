@@ -13,7 +13,7 @@ proc default_options {} {
 		outnam out.nam
 		p 0.0
 		agent NC
-        nc_r 2
+        nc_r 1
         nc_field_size_ 256
 	}
 
@@ -85,8 +85,8 @@ set sink [$ns node]
 #        Links Definition        
 #===================================
 #Createlinks between nodes
-$ns duplex-link $source $router 1Mb 100ms DropTail
-$ns duplex-link $router $sink 1Mb 100ms DropTail
+$ns duplex-link $source $router 10Mb 10ms DropTail
+$ns duplex-link $router $sink 10Mb 10ms DropTail
 $ns queue-limit $router $sink 100
 
 #Give node position (for NAM)
@@ -130,11 +130,16 @@ $ns lossmodel $em $router $sink
 #        Applications Definition        
 #===================================
 #Setup a CBR Application over TCP connection
+# set app0 [new Application/Traffic/CBR]
+# $app0 set type_ CBR
+# $app0 set rate_ 3Mb
+# $app0 set random_ false
 set app0 [new Application/FTP]
 $app0 attach-agent $tcp0
 $app0 set packet_size_ 1000
-$ns at 1.0 "$app0 start"
-$ns at 11.0 "$app0 stop"
+$ns at 1.0 "$app0 send 67108864"
+# $ns at 1.0 "$app0 start"
+# $ns at 11.0 "$app0 stop"
 
 
 #===================================
@@ -150,7 +155,7 @@ proc finish {} {
     exit 0
 }
 
-$ns at $opts(duration) "$ns nam-end-wireless $opts(duration)"
-$ns at $opts(duration) "finish"
-$ns at $opts(duration) "puts \"done\" ; $ns halt"
+# $ns at $opts(duration) "$ns nam-end-wireless $opts(duration)"
+# $ns at $opts(duration) "finish"
+# $ns at $opts(duration) "puts \"done\" ; $ns halt"
 $ns run
