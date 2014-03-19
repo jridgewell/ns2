@@ -858,29 +858,27 @@ void TcpNcSink::recv(Packet* pkt, Handler* h) {
     hdr_tcp *tcph = hdr_tcp::access(pkt);
     int seqno = tcph->seqno();
     int tx_serial_num = tcph->nc_tx_serial_num();
+    int columns_start = tcph->nc_coding_wnd_start();
     int columns = tcph->nc_coding_wnd_size();
     int rows = nc_coefficient_matrix_->size() + 1;
     int* nc_coefficients = tcph->nc_coefficients_;
     int row, r, c;
+    int padding;
     std::vector<double> *coefficients;
     Packet *p;
 
     if (seqno > acker_->Seqno()) {
-        coefficients = new std::vector<double>();
-        r = acker_->nc_next_unseen_ - acker_->Seqno();
-        while (r-- > 0) {
-            coefficients->push_back(0);
-        }
-        for (c = columns - 1, row = 0; c >= 0; c--) {
-            if (seqno - c > acker_->nc_next_unseen_) {
-                coefficients->push_back(nc_coefficients[row]);
+        padding = columns_start - (acker_->Seqno() + 1);
+        coefficients = new std::vector<double>(padding + columns);
+
+        for (c = 0; c < columns; c++) {
+            if (columns_start + c > acker_->Seqno()) {
+                coefficients->at(padding + c) = nc_coefficients[c];
             } else {
                 // TODO: modify packet data to remove already solved packets from linear combination
             }
-            row++;
         }
-        columns = coefficients->size();
-        acker_->nc_next_unseen_++;
+        columns += padding;
 
         nc_coding_window_->push_back(pkt->refcopy());
         nc_coefficient_matrix_->push_back(coefficients);

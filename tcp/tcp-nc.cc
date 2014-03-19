@@ -163,6 +163,7 @@ void TcpNcAgent::send(Packet* p, Handler* h) {
         tcph = hdr_tcp::access(linear_combination);
         tcph->nc_tx_serial_num() = nc_tx_serial_num_;
         tcph->nc_coding_wnd_size() = nc_coding_window_size_;
+        tcph->nc_coding_wnd_start() = last_ack_ + 1;
         tcph->nc_coefficients_ = coefficients;
 
         // ((PacketData*)linear_combination->userdata())->set_data(data);
