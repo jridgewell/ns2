@@ -796,17 +796,18 @@ void TcpNcSink::add_to_ack(Packet* pkt) {
 int find_max(const vector< vector<double>* >* m, int row) {
     int rows = m->size();
     double pivot, max_pivot;
+    int r = row;
 
     for (int i = row + 1; i < rows; i++) {
         pivot = m->at(i)->at(row);
         if (pivot < 0) { pivot *= -1; }
         if (pivot > max_pivot) {
             max_pivot = pivot;
-            row = i;
+            r = i;
         }
     }
 
-    return row;
+    return r;
 }
 
 vector<double>* BackSubstitution(const vector< vector<double>* >* m /*, const double<vector>* b*/) {
