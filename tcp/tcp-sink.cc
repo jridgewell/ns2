@@ -793,12 +793,12 @@ void TcpNcSink::add_to_ack(Packet* pkt) {
 
 int find_max(const vector< vector<double>* >* m, int row) {
     int rows = m->size();
-    double pivot, max_pivot;
     int r = row;
+    double max_pivot = fabs(m->at(row)->at(row));
+    double pivot;
 
-    for (int i = row + 1; i < rows; i++) {
-        pivot = m->at(i)->at(row);
-        if (pivot < 0) { pivot *= -1; }
+    for (int i = rows - 1; i < rows; i++) {
+        pivot = fabs(m->at(i)->at(row));
         if (pivot > max_pivot) {
             max_pivot = pivot;
             r = i;
@@ -833,7 +833,6 @@ MatrixStatus GaussianElimination(vector< vector<double>* >* m /*, vector<double>
     double c;
     vector<double> *pivot_row;
 
-    if (rows < columns) { return DEFICIENT; }
     for (k = 0; k < rows; k++) {
         pivots_row = find_max(m, k);
         if (zero_value(m->at(pivots_row)->at(k))) { return SINGULAR; } // Singular matrix
@@ -842,7 +841,8 @@ MatrixStatus GaussianElimination(vector< vector<double>* >* m /*, vector<double>
         // swap(b->at(k), b->at(pivots_row));
         pivot_row = m->at(k);
 
-        for (row = k + 1; row < rows; row++) {
+        // for (row = k + 1; row < rows; row++) {
+        for (row = rows - 1; row < rows && row > k; row++) {
             c = m->at(row)->at(k) / pivot_row->at(k);
             m->at(row)->at(k) = 0;
             for (column = k + 1; column < columns; column++) {
@@ -851,6 +851,7 @@ MatrixStatus GaussianElimination(vector< vector<double>* >* m /*, vector<double>
             // b->at(row) = b->at(row) - (c * b->at(k));
         }
     }
+    if (rows < columns) { return DEFICIENT; }
 
     return NON_SINGULAR;
 }
@@ -884,16 +885,14 @@ void TcpNcSink::recv(Packet* pkt, Handler* h) {
         nc_coding_window_->push_back(pkt->refcopy());
         nc_coefficient_matrix_->push_back(coefficients);
 
-        if (columns == rows) {
-            // resize the matrix
-            for (row = 0; row < rows; row++) {
-                coefficients = nc_coefficient_matrix_->at(row);
-                c = coefficients->size();
-                if (c < columns) {
-                    coefficients->resize(columns);
-                } else {
-                    columns = c;
-                }
+        // resize the matrix
+        for (row = 0; row < rows; row++) {
+            coefficients = nc_coefficient_matrix_->at(row);
+            c = coefficients->size();
+            if (c < columns) {
+                coefficients->resize(columns);
+            } else {
+                columns = c;
             }
         }
 
