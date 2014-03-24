@@ -900,6 +900,22 @@ void TcpNcSink::recv(Packet* pkt, Handler* h) {
         // TODO: perform gaussian elimination on data
         MatrixStatus status = GaussianElimination(nc_coefficient_matrix_);
 
+        if (status == SINGULAR) {
+            for (r = 0; r < rows; r++) {
+                if (zero_value(nc_coefficient_matrix_->at(r)->at(r))) {
+                    p = nc_coding_window_->at(r);
+                    // Free it twice.
+                    // Once for our copy, once for what would have been ack's copy
+                    Packet::free(p);
+                    Packet::free(p);
+                    nc_coding_window_->erase(nc_coding_window_->begin() + r);
+                    nc_coefficient_matrix_->erase(nc_coefficient_matrix_->begin() + r);
+                    r--;
+                    rows--;
+                }
+            }
+        }
+
         if (status == NON_SINGULAR) {
             acker_->nc_next_send_ += rows;
             // Erase nc_coefficient_matrix_ before acking packets,
