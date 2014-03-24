@@ -1960,6 +1960,7 @@ void TcpAgent::tcp_eln(Packet *pkt)
 void TcpAgent::finish()
 {
 	Tcl::instance().evalf("%s done", this->name());
+	Tcl::instance().evalf("finish");
 }
 
 void RtxTimer::expire(Event*)
