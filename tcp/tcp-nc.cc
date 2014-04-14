@@ -128,11 +128,15 @@ void TcpNcAgent::send(Packet* p, Handler* h) {
         }
     }
 
+    bool free = false;
+
     hdr_tcp *tcph = hdr_tcp::access(p);
     int index = tcph->seqno() % v_maxwnd_;
     if (!nc_coding_window_[index]) {
         nc_coding_window_size_++;
         nc_coding_window_[index] = p;
+    } else {
+        free = true;
     }
 
     nc_num_ += nc_r_; // TCP/NC does not specify how nc_num_ should be adjusted
@@ -174,4 +178,8 @@ void TcpNcAgent::send(Packet* p, Handler* h) {
         VegasTcpAgent::send(linear_combination, h);
     }
     nc_num_ -= floor(nc_num_);
+
+    if (free) {
+        Packet::free(p);
+    }
 }
