@@ -904,11 +904,10 @@ void TcpNcSink::recv(Packet* pkt, Handler* h) {
             for (r = 0; r < rows; r++) {
                 if (zero_value(nc_coefficient_matrix_->at(r)->at(r))) {
                     p = nc_coding_window_->at(r);
-                    // Free it twice.
-                    // Once for our copy, once for what would have been ack's copy
-                    Packet::free(p);
                     Packet::free(p);
                     nc_coding_window_->erase(nc_coding_window_->begin() + r);
+                    nc_coefficient_matrix_->at(r)->clear();
+                    delete nc_coefficient_matrix_->at(r);
                     nc_coefficient_matrix_->erase(nc_coefficient_matrix_->begin() + r);
                     r--;
                     rows--;
@@ -921,7 +920,11 @@ void TcpNcSink::recv(Packet* pkt, Handler* h) {
             // Erase nc_coefficient_matrix_ before acking packets,
             // because it's size will be used to determine the oldest
             // unseen packet.
-            nc_coefficient_matrix_->erase(nc_coefficient_matrix_->begin(), nc_coefficient_matrix_->end());
+            for (r = 0; r < rows; r++) {
+                nc_coefficient_matrix_->at(r)->clear();
+                delete nc_coefficient_matrix_->at(r);
+            }
+            nc_coefficient_matrix_->clear();
             for (r = 0; r < rows; r++) {
                 p = nc_coding_window_->at(r);
                 tcph = hdr_tcp::access(p);
@@ -930,7 +933,7 @@ void TcpNcSink::recv(Packet* pkt, Handler* h) {
                 TcpSink::recv(p, h);
                 Packet::free(p);
             }
-            nc_coding_window_->erase(nc_coding_window_->begin(), nc_coding_window_->end());
+            nc_coding_window_->clear();
             rows = 0;
         } else {
             tcph = hdr_tcp::access(pkt);
@@ -940,6 +943,12 @@ void TcpNcSink::recv(Packet* pkt, Handler* h) {
     } else {
         ack(pkt);
     }
+
+
+    // clean coefficients from packet header.
+    // Needs to be done since delete is never called on packets.
+    delete []nc_coefficients;
+    Packet::free(pkt);
 
     acker_->nc_prev_serial_num_ = tx_serial_num;
 }
