@@ -47,6 +47,7 @@
 #include "agent.h"
 #include "trafgen.h"
 #include "packet.h"
+#include "tcp.h"
 
 //"rtp timestamp" needs the samplerate
 #define SAMPLERATE 8000
@@ -61,10 +62,68 @@ public:
 		sendmsg(nbytes, NULL, flags);
 	}
 	virtual void sendmsg(int nbytes, AppData* data, const char *flags = 0);
+	virtual void send(Packet* p) { target_->recv(p); }
 	virtual void recv(Packet* pkt, Handler*);
 	virtual int command(int argc, const char*const* argv);
 protected:
 	int seqno_;
+};
+
+
+class CTcpAgent;
+class RetransmitTimer : public TimerHandler {
+public:
+	RetransmitTimer(CTcpAgent *a) : TimerHandler() { a_ = a; }
+protected:
+	virtual void expire(Event *e);
+	CTcpAgent *a_;
+};
+
+class CTcpAgent : public UdpAgent {
+public:
+	CTcpAgent();
+	CTcpAgent(packet_t);
+	virtual void recv(Packet* pkt, Handler*);
+	virtual void timeout();
+    virtual void set_rtx_timer();
+
+	virtual void sendmsg(int nbytes, AppData* data, const char *flags = 0);
+    virtual void send(Packet *p);
+    virtual void send_packets();
+    virtual void send_packet(int seqno, int blkno);
+    virtual double T(int seqno);
+    virtual int B(int seqno);
+    void finish();
+protected:
+	RetransmitTimer rtx_timer_;
+
+    int curseq_;
+    double time_lastack_;
+    double min_rtto_;
+    double rtt_;
+    double rtt_min_;
+    int numblks_;
+    int blksize_;
+    int seqno_nxt_;
+    int seqno_una_;
+
+    bool slow_start_;
+    int ss_threshold_;
+    double tokens_;
+    int used_tokens_;
+    int currblk_;
+    int currdof_;
+    double p_;
+    double u_;
+    double y_;
+
+    int total_blocks_;
+    int last_block_size_;
+
+    std::vector<double>* send_timestamps_;
+    std::vector<int>* block_numbers_;
+
+    std::vector< std::vector<Packet*> *> *coding_window_;
 };
 
 #endif

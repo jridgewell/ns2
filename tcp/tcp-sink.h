@@ -87,9 +87,14 @@ protected:
 	double ts_to_echo_;	/* timestamp to echo to peer */
 	int is_dup_;		// A duplicate packet.
 public:
+    bool should_ack;
     int last_ack_sent_;     // For updating timestamps, from Andrei Gurtov.
     int nc_prev_serial_num_;
     int nc_next_send_;
+
+    int ack_currblk_;
+    int ack_currdof_;
+    int ctcp_seqno_;
 };
 
 // derive Sacker from TclObject to allow for traced variable
@@ -176,6 +181,18 @@ protected:
 
     std::vector<Packet*>* nc_coding_window_;
     std::vector< std::vector<double>* >* nc_coefficient_matrix_;
+};
+
+class CTcpSink : public TcpSink {
+public:
+    CTcpSink(Acker*);
+    ~CTcpSink();
+    void recv(Packet* pkt, Handler*);
+protected:
+    virtual void add_to_ack(Packet* pkt);
+
+    std::vector< std::vector<Packet*>* >* payload_;
+    std::vector< std::vector< std::vector<double>* >* >* coefficient_matrix_;
 };
 
 inline bool zero_value(double val) {

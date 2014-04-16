@@ -48,7 +48,8 @@ public:
 } class_tcpsink;
 
 Acker::Acker() : next_(0), maxseen_(0), wndmask_(MWM), ecn_unacked_(0), 
-	ts_to_echo_(0), last_ack_sent_(0), nc_prev_serial_num_(0), nc_next_send_(-1)
+	ts_to_echo_(0), should_ack(true), last_ack_sent_(0), nc_prev_serial_num_(0), nc_next_send_(-1),
+    ack_currblk_(0), ack_currdof_(0), ctcp_seqno_(0)
 {
 	seen_ = new int[MWS];
 	memset(seen_, 0, (sizeof(int) * (MWS)));
@@ -380,7 +381,9 @@ void TcpSink::recv(Packet* pkt, Handler*)
 		recvBytes(numToDeliver);
 	}
 	// send any packets to the application
+    if (acker_->should_ack) {
       	ack(pkt);
+    }
 	// ACK the packet
 	Packet::free(pkt);
 	// remove it from the system
@@ -791,13 +794,19 @@ void TcpNcSink::add_to_ack(Packet* pkt) {
 }
 
 
-int find_max(const vector< vector<double>* >* m, int row) {
+int find_max(const vector< vector<double>* >* m, int row, bool fast) {
     int rows = m->size();
     int r = row;
     double max_pivot = fabs(m->at(row)->at(row));
     double pivot;
+    int i;
 
-    for (int i = rows - 1; i < rows; i++) {
+    if (fast) {
+        i = rows - 1;
+    } else {
+        i = row;
+    }
+    for (; i < rows; i++) {
         pivot = fabs(m->at(i)->at(row));
         if (pivot > max_pivot) {
             max_pivot = pivot;
@@ -825,7 +834,7 @@ vector<double>* BackSubstitution(const vector< vector<double>* >* m /*, const do
     return x;
 }
 
-MatrixStatus GaussianElimination(vector< vector<double>* >* m /*, vector<double>* b*/) {
+MatrixStatus GaussianElimination(vector< vector<double>* >* m /*, vector<double>* b*/, bool fast) {
     int rows = m->size();
     int columns = m->back()->size();
     int pivots_row;
@@ -834,15 +843,20 @@ MatrixStatus GaussianElimination(vector< vector<double>* >* m /*, vector<double>
     vector<double> *pivot_row;
 
     for (k = 0; k < rows; k++) {
-        pivots_row = find_max(m, k);
+        if (k >= columns) { break; }
+        pivots_row = find_max(m, k, fast);
         if (zero_value(m->at(pivots_row)->at(k))) { return SINGULAR; } // Singular matrix
 
         swap(m->at(k), m->at(pivots_row));
         // swap(b->at(k), b->at(pivots_row));
         pivot_row = m->at(k);
 
-        // for (row = k + 1; row < rows; row++) {
-        for (row = rows - 1; row < rows && row > k; row++) {
+        if (fast) {
+            row = rows - 1;
+        } else {
+            row = k + 1;
+        }
+        for (; row < rows && row > k; row++) {
             c = m->at(row)->at(k) / pivot_row->at(k);
             m->at(row)->at(k) = 0;
             for (column = k + 1; column < columns; column++) {
@@ -898,7 +912,7 @@ void TcpNcSink::recv(Packet* pkt, Handler* h) {
 
         // Use gaussian elimination to sovle for packets
         // TODO: perform gaussian elimination on data
-        MatrixStatus status = GaussianElimination(nc_coefficient_matrix_);
+        MatrixStatus status = GaussianElimination(nc_coefficient_matrix_, true);
 
         if (status == SINGULAR) {
             for (r = 0; r < rows; r++) {
@@ -962,4 +976,144 @@ void TcpNcSink::send(Packet* p, Handler* h) {
     } else {
         Packet::free(p);
     }
+}
+
+
+
+static class CTcpSinkClass : public TclClass {
+public:
+	CTcpSinkClass() : TclClass("Agent/TCPSink/CTCP") {}
+	TclObject* create(int, const char*const*) {
+		return (new CTcpSink(new Acker));
+	}
+} class_ctcpsink;
+
+CTcpSink::CTcpSink(Acker* acker) : TcpSink(acker) {
+    payload_ = new std::vector< std::vector<Packet*>* >();
+    coefficient_matrix_ = new std::vector< std::vector< std::vector<double>* >* >();
+}
+
+CTcpSink::~CTcpSink() {
+    for (unsigned int i = 0; i < coefficient_matrix_->size(); i++) {
+        for (unsigned int j = 0; j < coefficient_matrix_->at(i)->size(); j++) {
+            delete coefficient_matrix_->at(i)->at(j);
+        }
+        coefficient_matrix_->at(i)->clear();
+        delete coefficient_matrix_->at(i);
+    }
+    coefficient_matrix_->clear();
+    delete coefficient_matrix_;
+
+    for (unsigned int i = 0; i < payload_->size(); i++) {
+        for (unsigned int j = 0; j < payload_->at(i)->size(); j++) {
+            Packet::free(payload_->at(i)->at(j));
+        }
+        payload_->at(i)->clear();
+        delete payload_->at(i);
+    }
+    payload_->clear();
+    delete payload_;
+}
+
+void CTcpSink::add_to_ack(Packet* pkt) {
+	hdr_tcp *tcph = hdr_tcp::access(pkt);
+    tcph->seqno() = acker_->ctcp_seqno_;
+    tcph->ack_currblk() = acker_->ack_currblk_;
+    tcph->ack_currdof() = acker_->ack_currdof_;
+}
+
+void CTcpSink::recv(Packet* pkt, Handler* h) {
+    hdr_tcp *tcph = hdr_tcp::access(pkt);
+    int blkno = tcph->blkno();
+    int seqno = tcph->seqno();
+    int seed = tcph->seed();
+    int blksize = tcph->blksize();
+    int num_packets = tcph->num_packets();
+
+    acker_->ctcp_seqno_ = seqno;
+    blkno -= acker_->ack_currblk_;
+
+    srand(seed);
+
+    int r, c;
+    int rows;
+    std::vector<Packet*> *payloads;
+    std::vector< std::vector<double>* > *block;
+    std::vector<double> *coefficients;
+    Packet *p;
+    MatrixStatus status;
+
+    if (blkno >= 0) {
+        coefficients = new std::vector<double>(blksize);
+
+        for (c = 0; c < num_packets; c++) {
+            coefficients->at(c) = (rand() % 255) + 1;
+        }
+
+        if ((int)payload_->size() <= blkno) {
+            payload_->push_back(new std::vector<Packet*>());
+        }
+        if ((int)coefficient_matrix_->size() <= blkno) {
+            coefficient_matrix_->push_back(new std::vector< std::vector<double>* >());
+        }
+
+        payload_->at(blkno)->push_back(pkt->refcopy());
+        coefficient_matrix_->at(blkno)->push_back(coefficients);
+
+
+        do {
+            payloads = payload_->front();
+            block = coefficient_matrix_->front();
+            rows = payloads->size();
+
+            // Use gaussian elimination to sovle for packets
+            // TODO: perform gaussian elimination on data
+            status = GaussianElimination(block, false);
+
+            if (status == SINGULAR) {
+                for (r = 0; r < rows; r++) {
+                    if (zero_value(block->at(r)->at(r))) {
+                        p = payloads->at(r);
+                        Packet::free(p);
+                        payloads->erase(payloads->begin() + r);
+                        delete block->at(r);
+                        block->erase(block->begin() + r);
+                        r--;
+                        rows--;
+                    }
+                }
+            }
+
+            acker_->ack_currdof_ = rows;
+
+            if (status == NON_SINGULAR) {
+                acker_->should_ack = false;
+                for (r = 0; r < rows; r++) {
+                    p = payloads->at(r);
+                    tcph = hdr_tcp::access(p);
+                    tcph->seqno() = acker_->Seqno() + 1;
+
+                    TcpSink::recv(p, h);
+
+                    block->at(r)->clear();
+                    delete block->at(r);
+                }
+                block->clear();
+                payloads->clear();
+
+                delete payloads;
+                payload_->erase(payload_->begin());
+                delete block;
+                coefficient_matrix_->erase(coefficient_matrix_->begin());
+
+                acker_->should_ack = true;
+
+                acker_->ack_currblk_++;
+                acker_->ack_currdof_ = 0;
+            }
+        } while ((int)payload_->size() > 0 && status == NON_SINGULAR);
+    }
+
+    ack(pkt);
+    Packet::free(pkt);
 }

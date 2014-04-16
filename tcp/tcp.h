@@ -63,6 +63,13 @@ struct hdr_tcp {
     int nc_tx_serial_num_;       // TCP/NC
     int* nc_coefficients_;       // TCP/NC
 
+    int blkno_;                  // CTCP
+    int blksize_;                // CTCP
+    int num_packets_;            // CTCP
+    int seed_;                   // CTCP
+    int ack_currblk_;            // CTCP
+    int ack_currdof_;            // CTCP
+	
 	static int offset_;	// offset for this header
 	inline static int& offset() { return offset_; }
 	inline static hdr_tcp* access(Packet* p) {
@@ -84,6 +91,12 @@ struct hdr_tcp {
 	int& nc_tx_serial_num() { return (nc_tx_serial_num_); }
 	int& nc_coding_wnd_size() { return (nc_coding_wnd_size_); }
 	int& nc_coding_wnd_start() { return (nc_coding_wnd_start_); }
+    int& blkno() { return (blkno_); }
+    int& blksize() { return (blksize_); }
+    int& num_packets() { return (num_packets_); }
+    int& seed() { return (seed_); }
+    int& ack_currblk() { return (ack_currblk_); }
+    int& ack_currdof() { return (ack_currdof_); }
 };
 
 /* these are used to mark packets as to why we xmitted them */
