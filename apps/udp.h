@@ -52,6 +52,15 @@
 //"rtp timestamp" needs the samplerate
 #define SAMPLERATE 8000
 #define RTP_M 0x0080 // marker for significant events
+#define ZERO 1.0E-20
+
+typedef struct consecutive_ones {
+    int start;
+    int length;
+    bool operator==(const consecutive_ones& rhs) const {
+        return this->start == rhs.start && this->length == rhs.length;
+    }
+} consecutive_ones;
 
 class UdpAgent : public Agent {
 public:
@@ -83,18 +92,21 @@ class CTcpAgent : public UdpAgent {
 public:
 	CTcpAgent();
 	CTcpAgent(packet_t);
+    ~CTcpAgent();
 	virtual void recv(Packet* pkt, Handler*);
 	virtual void timeout();
     virtual void set_rtx_timer();
 
 	virtual void sendmsg(int nbytes, AppData* data, const char *flags = 0);
-    virtual void send(Packet *p);
     virtual void send_packets();
     virtual void send_packet(int seqno, int blkno);
     virtual double T(int seqno);
     virtual int B(int seqno);
     void finish();
 protected:
+    virtual void delay_bind_init_all();
+    virtual int delay_bind_dispatch(const char *varName, const char *localName, TclObject *tracer);
+
 	RetransmitTimer rtx_timer_;
 
     int curseq_;
@@ -112,7 +124,7 @@ protected:
     double tokens_;
     int used_tokens_;
     int currblk_;
-    int currdof_;
+    int *currdof_;
     double p_;
     double u_;
     double y_;
@@ -123,7 +135,17 @@ protected:
     std::vector<double>* send_timestamps_;
     std::vector<int>* block_numbers_;
 
+    std::vector< std::vector<consecutive_ones>* > *consecutive_ones_;
+
     std::vector< std::vector<Packet*> *> *coding_window_;
 };
+
+inline bool double_equal(double val, int expected) {
+    return (val <= expected + ZERO && val >= expected - ZERO);
+}
+
+inline bool double_equal(double val, int expected, double precision) {
+    return (val <= expected + precision && val >= expected - precision);
+}
 
 #endif

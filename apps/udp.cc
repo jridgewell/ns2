@@ -185,17 +185,38 @@ public:
 } class_ctcp_agent;
 
 CTcpAgent::CTcpAgent() : UdpAgent(), rtx_timer_(this), time_lastack_(0),
-    min_rtto_(0.2), rtt_(0.2), rtt_min_(std::numeric_limits<double>::max()), numblks_(10), blksize_(10),
+    min_rtto_(0.2), rtt_(0.2), rtt_min_(std::numeric_limits<double>::max()), numblks_(20), blksize_(3),
     seqno_nxt_(0), seqno_una_(1),
     slow_start_(true), ss_threshold_(20), tokens_(1),
-    currblk_(0), currdof_(0),
+    currblk_(0),
     p_(0.0), u_(.015), y_(2.0),
     total_blocks_(0), last_block_size_(0)
 {
     block_numbers_ = new std::vector<int>();
     send_timestamps_ = new std::vector<double>();
     coding_window_ = new std::vector< std::vector<Packet*> *>();
+    currdof_ = NULL;
+    consecutive_ones_ = NULL;
+    currdof_ = new int[numblks_];
+    for (int i = 0; i < numblks_; i++) {
+        currdof_[i] = 0;
+    }
+    consecutive_ones_ = new std::vector< std::vector<consecutive_ones>* >(numblks_, NULL);
 }
+
+CTcpAgent::~CTcpAgent() {
+}
+
+void CTcpAgent::delay_bind_init_all() {
+    delay_bind_init_one("blksize_");
+    Agent::delay_bind_init_all();
+}
+
+int CTcpAgent::delay_bind_dispatch(const char *varName, const char *localName, TclObject *tracer) {
+    if (delay_bind(varName, localName, "blksize_", &blksize_, tracer)) return TCL_OK;
+    return Agent::delay_bind_dispatch(varName, localName, tracer);
+}
+
 
 int CTcpAgent::B(int seqno) {
     return block_numbers_->at(seqno);
@@ -242,33 +263,28 @@ void CTcpAgent::sendmsg(int nbytes, AppData* data, const char* flags) {
         if (flags && (0 ==strcmp(flags, "NEW_BURST")))
             rh->flags() |= RTP_M;
         p->setdata(data);
-        send(p);
+
+        hdr_tcp::access(p)->seqno() = seqno_;
+        int blkno = seqno_ / blksize_;
+        int index = seqno_ % blksize_;
+
+        blkno -= currblk_;
+
+        if ((int) coding_window_->size() <= blkno) {
+            coding_window_->push_back(new std::vector<Packet*>());
+            total_blocks_++;
+            last_block_size_ = 0;
+        }
+        if (last_block_size_ <= index) {
+            coding_window_->at(blkno)->resize(index + 1);
+            last_block_size_++;
+        }
+        coding_window_->at(blkno)->at(index) = p;
     }
+    send_packets();
     idle();
 }
 
-
-void CTcpAgent::send(Packet* p) {
-    hdr_tcp* header = hdr_tcp::access(p);
-    int seqno = hdr_rtp::access(p)->seqno();
-    header->seqno() = seqno;
-    int blkno = seqno / blksize_;
-    int index = seqno % blksize_;
-
-    blkno -= currblk_;
-
-    if (total_blocks_ <= blkno) {
-        coding_window_->push_back(new std::vector<Packet*>());
-        total_blocks_++;
-        last_block_size_ = 0;
-    }
-    if (last_block_size_ <= index) {
-        coding_window_->at(blkno)->resize(index + 1);
-        last_block_size_++;
-    }
-    coding_window_->at(blkno)->at(index) = p;
-    send_packets();
-}
 
 void CTcpAgent::send_packets() {
     double current_time = Scheduler::instance().clock();
@@ -277,32 +293,49 @@ void CTcpAgent::send_packets() {
 
     if (tokens > 0) {
         int on_fly[numblks_];
+        bool brk = false;
         for (i = 0; i < numblks_; i++) {
-            on_fly[i] = 0;
+            on_fly[i] = currdof_[i];
         }
         for (int seqno = seqno_una_; seqno < seqno_nxt_; seqno++) {
-            if (B(seqno) >= currblk_ && current_time < T(seqno) + (1.5 * rtt_)) { // TODO: Bind 1.5
-                on_fly[B(seqno) - currblk_]++;
+            if (B(seqno) >= currblk_) { // TODO: Bind 1.5
+                if (double_equal(p_, 0, 0.005) || current_time < T(seqno) + (1.5 * rtt_)) {
+                    on_fly[B(seqno) - currblk_]++;
+                }
             }
         }
-        on_fly[0] += currdof_;
 
+        bool send = false;
         while (tokens > 0) {
+            send = false;
             tokens--;
             for (int blkno = 0; blkno < numblks_; blkno++) {
                 if (blkno + currblk_ >= total_blocks_) {
+                    brk = true;
                     break;
                 }
-                if ((1 - p_) * on_fly[blkno] < blksize_) {
+                if (on_fly[blkno] < blksize_) {
+                    send = true;
                     send_packet(seqno_nxt_, blkno + currblk_);
                     on_fly[blkno]++;
                     seqno_nxt_++;
                     break;
                 }
             }
+
+            if (!send && !brk/* && double_equal(p_, 0)*/) {
+                consecutive_ones_->push_back(NULL);
+                int *tmp = new int[numblks_ + 1];
+                std::copy(currdof_, currdof_ + numblks_, tmp);
+                tmp[numblks_++] = 0;
+                delete currdof_;
+                currdof_ = tmp;
+                tokens++;
+            }
+
         }
 
-        if (rtx_timer_.status() != TIMER_PENDING) {
+        if (send && rtx_timer_.status() != TIMER_PENDING) {
             /* No timer pending.  Schedule one. */
             set_rtx_timer();
         }
@@ -310,21 +343,51 @@ void CTcpAgent::send_packets() {
 }
 
 void CTcpAgent::send_packet(int seqno, int blkno) {
-    srand(1);
-    for (int i = 0; i < seqno; i++) {
-        rand();
-    }
-    int seed = rand();
-    srand(seed);
-
     Packet *p = allocpkt();
     hdr_cmn::access(p)->size() = size_;
     hdr_tcp* header = hdr_tcp::access(p);
     header->seqno() = seqno;
     header->blkno() = blkno;
     header->blksize() = blksize_;
-    header->seed() = seed;
-    header->num_packets() = (int)coding_window_->at(blkno - currblk_)->size();
+    // header->seed() = seed;
+    int num_packets = (int)coding_window_->at(blkno - currblk_)->size();
+    header->num_packets() = num_packets;
+
+    consecutive_ones row;
+    std::vector<consecutive_ones> *rows = consecutive_ones_->at(blkno - currblk_);
+    if (!rows) {
+        rows = new std::vector<consecutive_ones>();
+        consecutive_ones_->at(blkno - currblk_) = rows;
+    }
+    if ((int)rows->size() >= (num_packets * num_packets + num_packets) / 2) {
+        rows->clear();
+    }
+    bool cont;
+    do {
+        cont = false;
+        if ((int) rows->size() < blksize_) {
+            row.start = rows->size();
+            row.length = 1;
+        } else if ((int) rows->size() == blksize_) {
+            row.start = 0;
+            row.length = rows->size();
+        } else {
+            row.start = rand() % num_packets;
+            row.length = (rand() % (num_packets - row.start)) + 1;
+        }
+
+        for (int i = 0; i < (int)rows->size(); i++) {
+            if (row == rows->at(i)) {
+                cont = true;
+                break;
+            }
+        }
+    } while (cont);
+
+    rows->push_back(row);
+
+    header->c1_start() = row.start;
+    header->c1_length() = row.length;
 
     //TODO: create linear combination of data
     // std::vector <Packet*> *block = coding_window_->at(blkno);
@@ -361,11 +424,26 @@ void CTcpAgent::recv(Packet* pkt, Handler* h) {
             coding_window_->front()->clear();
             delete coding_window_->front();
             coding_window_->erase(coding_window_->begin());
+
+            consecutive_ones_->front()->clear();
+            delete consecutive_ones_->front();
+            consecutive_ones_->erase(consecutive_ones_->begin());
+            consecutive_ones_->push_back(NULL);
+
+            for (int i = 1; i < numblks_; i++) {
+                currdof_[i - 1] = currdof_[i];
+            }
+            currdof_[numblks_ - 1] = 0;
         }
+
         currblk_ = blk;
-        currdof_ = dof;
     }
-    currdof_ = std::max(currdof_, dof);
+
+    if (B(seqno) > blk) {
+        blk = B(seqno);
+    }
+    currdof_[blk - currblk_] = dof;
+
     if (seqno >= seqno_una_) {
         int losses = seqno - seqno_una_;
         p_ = p_ * pow(1.0 - u_, losses + 1) + (1 - pow(1.0 - u_, losses));
@@ -385,16 +463,19 @@ void CTcpAgent::recv(Packet* pkt, Handler* h) {
         }
     }
 
-    set_rtx_timer();
-
     seqno_una_ = seqno + 1;
+
+    if (seqno_una_ <= seqno_nxt_) {
+        set_rtx_timer();
+    }
 
     Packet::free(pkt);
     // UdpAgent::recv(pkt, h);
 
-    if (currblk_ >= total_blocks_ - 1 && currdof_ >= last_block_size_ - 1) {
+    if (currblk_ >= total_blocks_ - 1 && dof >= last_block_size_ - 1) {
         rtx_timer_.force_cancel();
         finish();
+        return;
     }
 
     // Send packets for after updating tokens
@@ -403,5 +484,5 @@ void CTcpAgent::recv(Packet* pkt, Handler* h) {
 
 void CTcpAgent::finish() {
 	Tcl::instance().evalf("%s done", this->name());
-	Tcl::instance().evalf("finish");
+	// Tcl::instance().evalf("finish");
 }

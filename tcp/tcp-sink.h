@@ -93,7 +93,7 @@ public:
     int nc_next_send_;
 
     int ack_currblk_;
-    int ack_currdof_;
+    std::vector<int> *ack_currdof_;
     int ctcp_seqno_;
 };
 
@@ -183,16 +183,25 @@ protected:
     std::vector< std::vector<double>* >* nc_coefficient_matrix_;
 };
 
+typedef struct column_swap {
+    int orig;
+    int end;
+} column_swap;
+
 class CTcpSink : public TcpSink {
 public:
     CTcpSink(Acker*);
     ~CTcpSink();
     void recv(Packet* pkt, Handler*);
 protected:
+
+    std::vector< std::vector<column_swap>* > *column_swaps_;
+
     virtual void add_to_ack(Packet* pkt);
 
     std::vector< std::vector<Packet*>* >* payload_;
     std::vector< std::vector< std::vector<double>* >* >* coefficient_matrix_;
+    int ack_blk_;
 };
 
 inline bool zero_value(double val) {

@@ -67,8 +67,10 @@ struct hdr_tcp {
     int blksize_;                // CTCP
     int num_packets_;            // CTCP
     int seed_;                   // CTCP
+    int c1_start_;               // NCTCP
+    int c1_length_;              // NCTCP
     int ack_currblk_;            // CTCP
-    int ack_currdof_;            // CTCP
+    int ack_currdof_;           // CTCP
 	
 	static int offset_;	// offset for this header
 	inline static int& offset() { return offset_; }
@@ -95,6 +97,8 @@ struct hdr_tcp {
     int& blksize() { return (blksize_); }
     int& num_packets() { return (num_packets_); }
     int& seed() { return (seed_); }
+    int& c1_start() { return (c1_start_); }
+    int& c1_length() { return (c1_length_); }
     int& ack_currblk() { return (ack_currblk_); }
     int& ack_currdof() { return (ack_currdof_); }
 };
